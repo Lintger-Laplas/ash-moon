@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=Ruslan+Display&display=swap">
 <style>
-/* Layout: one-screen mobile RPG — HUD strip, full-bleed map canvas, bottom nav; sheets slide over it. Single dark world by design. */
+/* Layout: one-screen mobile RPG — HUD strip, full-bleed map canvas, bottom nav; sheets slide over it; side-view duel screen for combat. Single dark world by design. */
 :root{
   --night:#0d0a11; --panel:#18121e; --panel2:#231a2b; --line:#3a2c44;
   --blood:#a3172b; --blood-hi:#e0384f; --bone:#ebe1cd; --muted:#9c90a6;
@@ -28,6 +28,7 @@ html{height:100%;box-sizing:border-box;background:var(--night)}
 body{height:100%;margin:0;overflow:hidden;background:var(--night);color:var(--bone);font-family:var(--f-body);font-size:15px;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+input{font:inherit}
 #app{height:100%;display:flex;flex-direction:column}
 #hud{padding-block:8px 6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:linear-gradient(var(--panel),var(--night));border-bottom:1px solid var(--line)}
 .hud-row{display:flex;align-items:center;gap:10px}
@@ -51,7 +52,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .zone b{color:var(--bone);font-weight:400}
 #view{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
-#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:calc(100% - 32px);padding:8px 14px;border-radius:6px;background:#18121ee8;border:1px solid var(--line);font-size:14px;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:calc(100% - 32px);padding:8px 14px;border-radius:6px;background:#18121ee8;border:1px solid var(--line);font-size:14px;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s;z-index:40}
 #toast.on{opacity:1}
 #nav{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:linear-gradient(var(--night),var(--panel));border-top:1px solid var(--line)}
 #nav button{position:relative;padding:11px 2px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);font-size:14px;letter-spacing:.03em}
@@ -61,15 +62,14 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
 /* sheets */
 .overlay{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center;background:#05030880;padding-top:calc(env(safe-area-inset-top,0px) + 24px)}
-.sheet{width:100%;max-width:540px;max-height:100%;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;box-shadow:0 -10px 40px #000a;animation:up .22s ease-out}
+.sheet{width:100%;max-width:560px;max-height:100%;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;box-shadow:0 -10px 40px #000a;animation:up .22s ease-out}
 @keyframes up{from{transform:translateY(30px);opacity:0}}
 .sheet-head{display:flex;align-items:center;gap:12px;padding-block:14px 10px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line)}
 .sheet-head h2{flex:1;margin:0;font-family:var(--f-display);font-weight:400;font-size:21px;letter-spacing:.02em;text-wrap:balance;color:var(--bone)}
 .x{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);font-size:20px;line-height:1}
-.sheet-body{overflow-y:auto;padding-block:14px calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));display:grid;gap:14px}
+.sheet-body{overflow-y:auto;padding-block:14px calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));display:grid;gap:14px;grid-auto-rows:max-content;align-content:start}
 .sheet-body p{margin:0;line-height:1.5;color:#d8cdbb}
 .lore{font-style:italic;color:var(--muted)!important}
-.sheet-body{grid-auto-rows:max-content;align-content:start}
 .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex:none;position:sticky;top:-14px;z-index:2;background:var(--panel);padding-block:4px;margin-block:-4px}
 .tabs button{flex:1 0 auto;white-space:nowrap;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted)}
 .tabs button.on{background:var(--panel2);color:var(--bone);border-color:var(--blood)}
@@ -108,56 +108,133 @@ h3{margin:4px 0 0;font-family:var(--f-display);font-weight:400;font-size:15px;le
 .r0{color:var(--r0)}.r1{color:var(--r1)}.r2{color:var(--r2)}.r3{color:var(--r3)}
 .row.rb1{border-color:#2c4a7a}.row.rb2{border-color:#5a3a82}.row.rb3{border-color:#8a5420}
 .lines{display:block;font-size:12.5px;color:var(--muted);line-height:1.4}
-.pips{color:var(--gold);letter-spacing:2px;font-size:12px}
 .mm{width:100%;max-width:420px;aspect-ratio:1;image-rendering:pixelated;border:1px solid var(--line);border-radius:8px;justify-self:center;background:#050308}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
 .legend b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
 
-/* combat */
-.combat{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;gap:9px;padding-block:calc(env(safe-area-inset-top,0px) + 12px) calc(env(safe-area-inset-bottom,0px) + 10px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:radial-gradient(ellipse 120% 60% at 50% 18%,#3a0f1c,var(--night) 70%)}
-.c-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.c-title{font-family:var(--f-display);font-size:19px}
-.c-turn{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
-.foes{flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:10px}
-.foe{position:relative;width:min(31%,150px);padding:8px 6px 8px;border-radius:10px;border:1px solid var(--line);background:#150f1acc;display:grid;gap:3px;justify-items:center;transition:opacity .4s,transform .15s}
-.foe img{width:78%;image-rendering:pixelated;filter:drop-shadow(0 6px 6px #000);transform-origin:50% 100%;animation:idle 2.6s ease-in-out infinite}
+/* character creation & picks */
+.cards{display:grid;gap:8px}
+.card{display:grid;gap:4px;text-align:left;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2)}
+.card b{font-size:16px}.card small{color:var(--muted);line-height:1.4}.card .bon{color:var(--gold);font-size:13px}.card .pas{color:#c8b8ff;font-size:13px}
+.card.on{border-color:var(--blood-hi);box-shadow:0 0 0 1px var(--blood-hi),0 0 16px #e0384f33}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line)}
+.sw.on{border-color:var(--bone);box-shadow:0 0 0 2px var(--blood-hi)}
+.namein{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--line);background:#0f0b13;color:var(--bone);font-size:16px}
+.portrait{display:flex;gap:14px;align-items:center}
+.portrait .pimg{width:96px;height:96px;flex:none;border-radius:12px;border:1px solid var(--line);background:radial-gradient(circle at 50% 30%,#3a1824,#120c16);display:grid;place-items:center}
+.portrait .pimg img{width:80px;image-rendering:pixelated}
+.steps{display:flex;gap:6px}.steps i{flex:1;height:4px;border-radius:2px;background:var(--line)}.steps i.on{background:var(--blood-hi)}
+
+/* paper doll */
+.doll{display:grid;grid-template-columns:62px 1fr 62px;gap:8px;align-items:start}
+.dcol{display:grid;gap:8px}
+.slot{position:relative;width:62px;height:62px;border-radius:8px;border:1px solid var(--line);background:#120c16;display:grid;place-items:center;padding:0}
+.slot img{width:44px;image-rendering:pixelated}
+.slot .sl{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;color:var(--muted);letter-spacing:.04em}
+.slot.b1{border-color:#3b6ab0}.slot.b2{border-color:#8a5ad8}.slot.b3{border-color:#e08a2a}
+.slot.sel{box-shadow:0 0 0 2px var(--bone)}
+.slot .up{position:absolute;top:2px;right:4px;font-size:10px;color:var(--gold)}
+.dmid{display:grid;justify-items:center;gap:6px;align-self:stretch;border-radius:10px;background:radial-gradient(ellipse at 50% 35%,#2e1520,#120c16 75%);border:1px solid var(--line);padding:10px 6px}
+.dmid img{width:min(150px,100%);image-rendering:pixelated}
+.dmid .bars{width:100%}
+.bag{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px}
+.bag .slot{width:100%;height:auto;aspect-ratio:1}
+.bag .slot img{width:70%}
+.ipanel{padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);display:grid;gap:8px}
+.ipanel .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+
+/* bloodline trees */
+.branches{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.branches button{padding:8px 4px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:13px;line-height:1.2}
+.branches button b{display:block;color:var(--bone);font-size:14px}
+.branches button.on{border-color:var(--blood-hi);background:var(--panel2)}
+.tier{display:grid;gap:8px;padding:10px;border-radius:10px;border:1px dashed var(--line)}
+.tier.lock{opacity:.5}
+.tier h4{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.node{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;background:var(--panel2);border:1px solid var(--line)}
+.node .rk{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-variant-numeric:tabular-nums;border:2px solid #4a3a52;background:radial-gradient(circle,#2a1a2e,#120c16)}
+.node.has .rk{border-color:var(--blood-hi);box-shadow:0 0 10px #e0384f55}
+.node.act .rk{border-radius:10px}
+.node .t{flex:1;min-width:0}.node .t b{display:block}.node .t small{color:var(--muted);font-size:12.5px;line-height:1.35}
+
+/* combat: side-view duel */
+.combat{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;background:var(--night);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.cbars{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding-block:8px 6px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:linear-gradient(#0d0a11,#0d0a11cc)}
+.cb{flex:1;min-width:0;display:grid;gap:3px}
+.cb .nm{font-family:var(--f-display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb.r{text-align:right}.cb.r .bar i{inset:0 0 0 auto}
+.cmid{flex:none;display:grid;justify-items:center;gap:3px;padding-top:2px}
+.moons{display:flex;gap:4px}
+.moon{width:15px;height:15px;border-radius:50%;border:1px solid #8a7a6a;background:#0a070d}
+.moon.f{background:radial-gradient(circle at 35% 35%,#fff6d0,#d9b04a);box-shadow:0 0 8px #d9b04a99}
+.cturn{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.scene{position:relative;flex:1;min-height:150px;overflow:hidden;--sky1:#17121f;--sky2:#2a2232;--gr1:#2e2b26;--gr2:#1a1814;background:linear-gradient(var(--sky1),var(--sky2) 52%,var(--gr1) 52.2%,var(--gr2))}
+.scene.snow{--sky1:#7d8a9a;--sky2:#c4ccd6;--gr1:#dfe6ec;--gr2:#a8b4c0}
+.scene.swamp{--sky1:#101a16;--sky2:#22302a;--gr1:#263420;--gr2:#121a10}
+.scene.town{--sky1:#1c1418;--sky2:#3a2a26;--gr1:#3e3228;--gr2:#221a14}
+.scene.boss{--sky1:#2a0710;--sky2:#4a1420;--gr1:#2a2026;--gr2:#140e12}
+.scene::before{content:"";position:absolute;left:62%;top:8%;width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#efe8d8,#a8a090 70%);opacity:.55;box-shadow:0 0 40px #efe8d855}
+.scene.boss::before{background:radial-gradient(circle at 40% 40%,#ff8a8a,#a3172b 70%);opacity:.8;box-shadow:0 0 60px #e0384f}
+.scene::after{content:"";position:absolute;inset:auto 0 0 0;height:48%;background:repeating-linear-gradient(100deg,transparent 0 38px,#0000001a 38px 40px);pointer-events:none}
+.fig{position:absolute;bottom:16%;display:grid;justify-items:center;gap:2px;transition:transform .15s;z-index:1}
+.fig img{image-rendering:pixelated;filter:drop-shadow(0 8px 6px #000a)}
+.hero-fig{left:6%}.hero-fig img{width:min(32vw,150px)}
+.foes{position:absolute;right:3%;bottom:12%;left:42%;display:flex;flex-wrap:wrap-reverse;justify-content:flex-end;align-items:flex-end;gap:2px 6px;z-index:1}
+.foe{position:relative;display:grid;justify-items:center;gap:2px;padding:2px;border:0;background:none;width:min(25vw,118px);transition:opacity .4s,transform .15s}
+.foe.boss{width:min(36vw,170px)}
+.foe img{width:100%;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 8px 6px #000a);animation:idle 2.6s ease-in-out infinite}
 .foe:nth-child(2) img{animation-delay:-.9s}.foe:nth-child(3) img{animation-delay:-1.7s}
 .foe[data-sp="wraith"] img,.foe[data-sp="vspawn"] img{animation:float 3.2s ease-in-out infinite}
-.foe.boss img{filter:drop-shadow(0 6px 6px #000) drop-shadow(0 0 14px #e0384f88)}
+.foe.boss img{filter:drop-shadow(0 8px 6px #000) drop-shadow(0 0 14px #e0384f99)}
+.foe .fn{font-size:11px;line-height:1.1;text-align:center;text-shadow:0 1px 3px #000;max-width:100%}
+.foe .bar{width:90%;height:6px}
+.foe.sel .fn{color:#ffd0d6}.foe.sel::before{content:"▼";position:absolute;top:-14px;color:var(--blood-hi);font-size:12px;animation:float 1s ease-in-out infinite}
+.foe.dead{opacity:.15;filter:grayscale(1)}
 .foe.dead img{animation:none}
-@keyframes idle{50%{transform:translateY(-2px) scaleY(1.03)}}
-@keyframes float{50%{transform:translateY(-8px)}}
-.foe.boss{width:min(48%,210px)}
-.foe.sel{border-color:var(--blood-hi);box-shadow:0 0 0 1px var(--blood-hi),0 0 18px #e0384f44}
-.foe.dead{opacity:.18;filter:grayscale(1)}
-.foe .lv{position:absolute;top:5px;left:7px;font-size:11px;color:var(--muted)}
-.foe .fn{font-size:13px;line-height:1.15;text-align:center;min-height:2.3em;display:flex;align-items:center}
-.foe .bar{width:100%;height:8px}
-.foe .hpt{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-.sts{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;min-height:15px}
-.sts i{font-style:normal;font-size:10px;line-height:13px;padding:1px 4px;border-radius:3px;background:#3a1420;color:#ffb0b8}
+@keyframes idle{50%{transform:scaleX(-1) translateY(-2px) scaleY(1.03)}}
+@keyframes float{50%{transform:scaleX(-1) translateY(-8px)}}
+.hero-fig img{animation:hidle 2.8s ease-in-out infinite}
+@keyframes hidle{50%{transform:translateY(-2px) scaleY(1.02)}}
+.sts{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;min-height:13px}
+.sts i{font-style:normal;font-size:9.5px;line-height:12px;padding:0 3px;border-radius:3px;background:#3a1420;color:#ffb0b8}
 .sts i.burn{background:#4a2410;color:#ffc27a}.sts i.stun{background:#2a2a40;color:#c8d0ff}.sts i.weak{background:#2a3020;color:#c8e0a0}
 .sts i.pois{background:#1e3a1a;color:#a8f08a}.sts i.buff{background:#3a3010;color:#ffe08a}
+.clog{position:absolute;left:8px;right:8px;top:6px;font-size:12px;line-height:1.25;color:#d8cdbbcc;text-shadow:0 1px 3px #000;display:grid;gap:1px;pointer-events:none;z-index:2}
+.clog div:last-child{color:#fff}
+.banner{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-family:var(--f-display);font-size:24px;color:var(--gold);text-shadow:0 0 20px #d9a441,0 2px 4px #000;pointer-events:none;opacity:0;z-index:3;white-space:nowrap}
+.banner.on{animation:ban 1.4s ease-out}
+@keyframes ban{0%{opacity:0;transform:translate(-50%,-30%) scale(.8)}20%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
 .hit{animation:hit .3s}
 @keyframes hit{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}}
-.fl{position:absolute;left:50%;top:30%;transform:translateX(-50%);font-weight:700;font-size:20px;pointer-events:none;text-shadow:0 2px 4px #000;animation:fl .9s forwards;white-space:nowrap;z-index:2}
-.fl.dmg{color:#fff}.fl.crit{color:var(--gold);font-size:25px}.fl.miss{color:var(--muted);font-size:15px}.fl.heal{color:var(--ok)}.fl.en{color:#9db4ff}.fl.hurt{color:var(--blood-hi)}.fl.dot{color:#ffb070;font-size:16px}
-@keyframes fl{to{transform:translate(-50%,-42px);opacity:0}}
-.clog{height:4.5em;overflow:hidden;font-size:13px;line-height:1.12em;color:var(--muted);display:flex;flex-direction:column;justify-content:flex-end}
-.clog div:last-child{color:var(--bone)}
-.c-hero{position:relative;display:flex;align-items:center;gap:12px;padding:7px 10px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
-.c-hero img{width:42px;image-rendering:pixelated}
-.c-hero .bars{gap:4px}
-.c-hero .sts{justify-content:flex-start;min-height:0}
-.skills{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.sk{min-height:48px;padding:5px 4px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);display:grid;align-content:center;gap:2px;text-align:center;font-size:13.5px;line-height:1.1}
-.sk small{font-size:11px;color:var(--muted)}
-.sk.atk{border-color:#5e1422;background:linear-gradient(#2c1420,#1c1018)}
-.sk.util{min-height:40px;background:transparent}
-.sk:disabled{opacity:.35;cursor:default}
-.sk:not(:disabled):active{transform:scale(.97)}
+.fl{position:absolute;left:50%;top:20%;transform:translateX(-50%);font-weight:700;font-size:22px;pointer-events:none;text-shadow:0 2px 4px #000;animation:fl .95s forwards;white-space:nowrap;z-index:4}
+.fl.dmg{color:#fff}.fl.crit{color:var(--gold);font-size:28px}.fl.miss{color:#c8c0d0;font-size:15px}.fl.heal{color:var(--ok)}.fl.en{color:#9db4ff}.fl.hurt{color:var(--blood-hi)}.fl.dot{color:#ffb070;font-size:16px}
+@keyframes fl{to{transform:translate(-50%,-46px);opacity:0}}
+.cpanel{padding-block:8px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));background:linear-gradient(#1c1420,#110c15);border-top:1px solid #4a3442;display:grid;gap:7px}
+.ctabs{display:flex;gap:6px;align-items:center}
+.ctabs button{padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:13px}
+.ctabs button.on{background:#2a3a5a;border-color:#4a6aa0;color:#fff}
+.ctabs .combo{margin-left:auto;font-family:var(--f-display);font-size:13px;color:var(--gold);letter-spacing:.06em}
+.hands{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.hand{border:1px solid var(--line);border-radius:8px;background:#0f0b13;padding:6px;display:grid;gap:5px;min-width:0}
+.hand .hh{display:flex;gap:6px;align-items:center;min-width:0}
+.hand .hh img{width:28px;flex:none;image-rendering:pixelated}
+.hand .hh div{min-width:0}
+.hand .hh b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.hand .hh span{display:block;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbtns{display:flex;gap:4px}
+.cbtn{flex:1;min-width:0;min-height:42px;border-radius:7px;border:1px solid #5e1422;background:linear-gradient(#2c1420,#1c1018);font-size:12px;line-height:1.1;padding:3px 2px;display:grid;align-content:center;gap:1px}
+.cbtn small{display:block;color:#9db4ff;font-size:10.5px}
+.cbtn.alt{border-color:var(--line);background:#1a1420}
+.cbtn.red{border-color:#7a1424;background:linear-gradient(#5a1420,#3a0c16)}
+.cbtn:disabled{opacity:.33;cursor:default}
+.cbtn:not(:disabled):active{transform:scale(.96)}
+.crow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.abgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.abgrid .cbtn{min-height:50px}
+.empty{font-size:12px;color:var(--muted);text-align:center;padding:10px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-@media (min-width:700px){.combat{align-items:center}.combat>*{width:100%;max-width:560px}}
+@media (min-width:700px){.cpanel,.cbars{width:100%;max-width:640px;margin-inline:auto}}
 </style>
 
 <div id="app">
@@ -186,29 +263,34 @@ h3{margin:4px 0 0;font-family:var(--f-display);font-weight:400;font-size:15px;le
 <div id="ov" class="overlay" hidden></div>
 
 <div id="combat" class="combat" hidden>
-  <div class="c-top"><div class="c-title" id="cTitle">Схватка</div><div class="c-turn" id="cTurn">Ход 1</div></div>
-  <div class="foes" id="foes"></div>
-  <div class="clog" id="clog"></div>
-  <div class="c-hero" id="cHero">
-    <img id="cHeroImg" alt="">
-    <div class="bars">
+  <div class="cbars">
+    <div class="cb"><div class="nm" id="cName">Охотник</div>
       <span class="bar hp"><i id="cHp"></i><span id="cHpT"></span></span>
-      <span class="bar en"><i id="cEn"></i><span id="cEnT"></span></span>
-      <span class="sts" id="cHeroSts"></span>
-    </div>
+      <span class="bar en"><i id="cEn"></i><span id="cEnT"></span></span></div>
+    <div class="cmid"><div class="moons" id="moons"></div><div class="cturn" id="cTurn">Ход 1</div></div>
+    <div class="cb r"><div class="nm" id="tName">Враг</div>
+      <span class="bar hp"><i id="tHp"></i><span id="tHpT"></span></span>
+      <span class="sts" id="tSts" style="justify-content:flex-end"></span></div>
   </div>
-  <div class="skills" id="skills"></div>
+  <div class="scene" id="scene">
+    <div class="clog" id="clog"></div>
+    <div class="fig hero-fig" id="cHero"><img id="cHeroImg" alt=""><span class="sts" id="cHeroSts"></span></div>
+    <div class="foes" id="foes"></div>
+    <div class="banner" id="banner"></div>
+  </div>
+  <div class="cpanel" id="cpanel"></div>
 </div>
 
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
-const W=80,H=80,SAVE_KEY='ash-moon-save-v1',SAVE_VER=4,START={x:10,y:70};
+const W=80,H=80,SAVE_KEY='ash-moon-save-v1',SAVE_VER=5,START={x:10,y:70};
 const T_GRASS=0,T_FOREST=1,T_MOUNT=2,T_WATER=3,T_ROAD=4;
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const f1=v=>(Math.round(v*100)/100).toString().replace('.',',');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- sprites ---------- */
 const SPR={
@@ -287,13 +369,29 @@ const SPR={
  obelisk:{pal:{s:'#5a5468',S:'#3a3448',m:'#bfe6ff'},rows:[
   '.....ss.....','....ssss....','....smms....','....ssss....','....smms....','....ssss....',
   '....ssss....','...ssssss...','...sSSSSs...','..ssssssss..','.SSSSSSSSSS.','............']},
+ /* item icons (10x10) */
+ i_sword:{pal:{m:'#d0d4dc',M:'#7a808a',g:'#d9b04a',h:'#7a5230'},rows:['.........m','........mM','.......mM.','......mM..','.....mM...','..g.mM....','...gM.....','...hg.....','..h..g....','.h........']},
+ i_dagger:{pal:{m:'#d0d4dc',M:'#7a808a',g:'#d9b04a',h:'#7a5230'},rows:['..........','..........','.......m..','......mM..','.....mM...','..g.mM....','...gM.....','...hg.....','..h.......','..........']},
+ i_axe:{pal:{m:'#c8ccd4',M:'#7a808a',h:'#7a5230'},rows:['.....mm...','....mmMm..','....mMMm..','.....mmh..','......h...','.....h....','....h.....','...h......','..h.......','.h........']},
+ i_mace:{pal:{m:'#b8bcc4',M:'#6a707a',h:'#7a5230'},rows:['......m.m.','.....mmmm.','......mMm.','.....mmmm.','....h.m...','...h......','..h.......','.h........','h.........','..........']},
+ i_hammer:{pal:{m:'#b8bcc4',M:'#6a707a',h:'#7a5230',g:'#d9b04a'},rows:['...mmmmm..','...mMMMm..','...mmmmm..','.....h....','.....h....','.....h....','.....h....','.....h....','.....h....','.....g....']},
+ i_spear:{pal:{m:'#d0d4dc',M:'#7a808a',h:'#7a5230'},rows:['.........m','........mm','.......mM.','......h...','.....h....','....h.....','...h......','..h.......','.h........','h.........']},
+ i_katana:{pal:{m:'#e8ecf2',g:'#b3192e',h:'#2a1a1a'},rows:['.........m','........m.','.......m..','......m...','.....m....','....m.....','..gg......','...h......','..h.......','.h........']},
+ i_staff:{pal:{b:'#e0384f',p:'#ffb0b8',h:'#5a3a22'},rows:['.......bb.','......bppb','.......bb.','......h...','.....h....','....h.....','...h......','..h.......','.h........','h.........']},
+ i_scythe:{pal:{m:'#d0d4dc',h:'#4a3020'},rows:['..mmmmm...','.m....mh..','.......h..','.......h..','......h...','......h...','.....h....','.....h....','....h.....','....h.....']},
+ i_shield:{pal:{m:'#a8acb4',r:'#8a1d31',g:'#d9b04a'},rows:['.mmmmmmmm.','.mrrrrrrm.','.mrrggrrm.','.mrggggrm.','.mrrggrrm.','.mrrrrrrm.','..mrrrrm..','...mrrm...','....mm....','..........']},
+ i_helm:{pal:{m:'#a8acb4',M:'#5a5e66'},rows:['..........','...mmmm...','..mmmmmm..','.mmMMMMmm.','.mMm..mMm.','.mM....Mm.','.mm....mm.','..........','..........','..........']},
+ i_armor:{pal:{l:'#8a5a2b',L:'#5a3a1e',g:'#d9b04a'},rows:['.LL....LL.','.LlllllllL','.LllllllL.','..llggll..','..llllll..','..llllll..','..LllllL..','..LL..LL..','..........','..........']},
+ i_gloves:{pal:{l:'#8a5a2b',L:'#5a3a1e'},rows:['..........','..l.l.....','..l.l.l...','..lllll...','..llllll..','..lllll...','..LLLL....','..LLLL....','..........','..........']},
+ i_boots:{pal:{l:'#6a4a2a',L:'#3a2614'},rows:['..........','...LL.....','...ll.....','...ll.....','...ll.....','...lll....','...llll...','..LLLLL...','..........','..........']},
+ i_ring:{pal:{g:'#d9b04a',b:'#5ab0ff'},rows:['..........','....bb....','...gbbg...','..g....g..','..g....g..','..g....g..','...gggg...','..........','..........','..........']},
+ i_amulet:{pal:{g:'#d9b04a',r:'#c0182c'},rows:['..g....g..','...g..g...','....gg....','....rr....','...rrrr...','...rrrr...','....rr....','..........','..........','..........']},
 };
 const sprCache={},urlCache={};
 function getSprite(name,over){
   const key=name+(over?JSON.stringify(over):'');
   if(sprCache[key])return sprCache[key];
   const d=SPR[name],pal=Object.assign({},d.pal,over||{});
-  // 1px dark outline + top light / bottom shade so figures read as solid shapes
   const w=Math.max(...d.rows.map(r=>r.length))+2,h=d.rows.length+2;
   const grid=new Array(w*h).fill(null);
   d.rows.forEach((r,j)=>{for(let i=0;i<r.length;i++){const ch=r[i];if(ch==='.')continue;const col=pal[ch];if(col)grid[(j+1)*w+i+1]=col}});
@@ -312,6 +410,7 @@ function shade(hex,a){
   return`rgb(${m(n>>16&255)},${m(n>>8&255)},${m(n&255)})`;
 }
 function spriteURL(name,over){const key=name+(over?JSON.stringify(over):'');return urlCache[key]||(urlCache[key]=getSprite(name,over).toDataURL())}
+const heroLook=()=>S&&S.look?S.look:null;
 
 /* ---------- world data ---------- */
 const LOCS=[
@@ -367,10 +466,10 @@ const QUESTS={
 };
 const TROPHY={
  fang:{n:'Клык Альфы',d:'+4 к атаке',atk:4},
- phyl:{n:'Филактерия Морвена',d:'+25 энергии, +30 здоровья',en:25,hp:30},
+ phyl:{n:'Филактерия Морвена',d:'+25 фокуса, +30 здоровья',en:25,hp:30},
  crownq:{n:'Венец Королевы Топей',d:'+45 здоровья',hp:45},
  heart:{n:'Сердце Горного Короля',d:'+5 защиты, +40 здоровья',def:5,hp:40},
- tear:{n:'Слеза Ильвы',d:'+8% крита, +15 энергии',crit:8,en:15},
+ tear:{n:'Слеза Ильвы',d:'+8% крита, +15 фокуса',crit:8,en:15},
  crown:{n:'Венец Ноктюрна',d:'+6 к атаке. Луна снова бледна.',atk:6}};
 const EN={
  wolf:{n:'Пепельный волк',sp:'wolf',hp:18,atk:6,def:1,dg:8,min:1,max:6},
@@ -386,6 +485,7 @@ const EN={
  icewolf:{n:'Ледяной волк',sp:'wolf',pal:{g:'#c8d8e8',G:'#8aa0b8',l:'#eef6ff',E:'#5ad8ff'},hp:34,atk:14,def:3,dg:10,min:10,max:20,sk:'freeze',bio:1},
  vspawn:{n:'Вампир-отродье',sp:'vspawn',hp:40,atk:16,def:4,dg:12,min:14,max:20,sk:'drain'},
  garg:{n:'Горгулья',sp:'garg',hp:55,atk:15,def:12,dg:3,min:15,max:20}};
+const BEASTS=['wolf','spider','igu','icewolf','troll','alpha','queen'];
 const BOSS={
  alpha:{n:'Альфа Пепельной Стаи',sp:'wolf',pal:{g:'#3a3d44',G:'#22242a',l:'#5a5e66',E:'#ff3030'},lvl:4,hp:150,atk:13,def:4,dg:6,sk:'howl',xp:120,gold:150,tro:'fang',adds:[['wolf',3]],
    intro:'Из темноты пещеры поднимается волк размером с телёнка. Шерсть его серая от пепла, а глаза горят, как угли.'},
@@ -401,71 +501,181 @@ const BOSS={
    intro:'Тронный зал залит красным светом. Князь Ноктюрн медленно встаёт: «Сто ночей я ждал, кто осмелится прийти. Ты пахнешь пеплом и надеждой».'}};
 const BOSS_ORDER=[['alpha','den'],['lich','crypt'],['queen','lair'],['troll','cave'],['witch','tower'],['prince','castle']];
 
-/* ---------- skills ---------- */
-const SKILLS=[
- {id:'hit',n:'Удар',en:0,lv:1,d:r=>`Урон ×${f1(1+.1*(r-1))}${r>=3?'. 25%: кровотечение':''}${r>=5?'. 25%: второй удар':''}`},
- {id:'rush',n:'Кровавый рывок',en:8,lv:1,d:r=>`Урон ×${f1(1.8+.15*(r-1))}${r>=2?'. Вызывает кровотечение':''}${r>=4?'. Стоит 6 энергии':''}`},
- {id:'bite',n:'Вампирский укус',en:10,lv:3,d:r=>`Урон ×${f1(1.2+.1*(r-1))}, лечит на ${60+10*(r-1)}% урона${r>=3?'. +4 энергии':''}${r>=5?'. Лечение ×2 при здоровье ниже 30%':''}`},
- {id:'whirl',n:'Вихрь клинков',en:14,lv:5,d:r=>`Урон ×${f1(.8+.1*(r-1))} по всем врагам${r>=3?'. Кровотечение всем':''}${r>=5?'. 20%: оглушение':''}`},
- {id:'stun',n:'Оглушающий удар',en:12,lv:6,d:r=>`Урон ×${f1(1.1+.1*(r-1))}, оглушение ${40+10*(r-1)}%${r>=4?'. Ослабляет врага':''}`},
- {id:'seal',n:'Тёмная печать',en:18,lv:8,d:r=>`Магия ${12+8*(r-1)} + Воля×4 сквозь броню${r>=3?'. Ослабляет врага':''}${r>=5?'. Поджигает':''}`},
- {id:'fire',n:'Огненная склянка',en:16,lv:10,d:r=>`Магия ${8+6*(r-1)} + Воля×2 по всем, поджог на ${r>=4?5:3} хода`},
- {id:'cry',n:'Боевой клич',en:10,lv:12,d:r=>`Атака +${25+5*(r-1)}% на ${r>=3?4:3} хода${r>=5?', крит +15%':''}`},
- {id:'guard',n:'Защита',en:0,lv:1,d:r=>`Урон по вам −${r>=5?70:50}%, +${6+2*(r-1)} энергии${r>=3?'. Контратака':''}`}];
-const SKB=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
-const rank=id=>(S.skills&&S.skills[id])||0;
-const skCost=id=>SKB[id].en-(id==='rush'&&rank('rush')>=4?2:0);
+/* ---------- character: lineages, callings, specialisations ---------- */
+const LINEAGES={
+ valdrak:{n:'Дом Вальдрак',t:'Воители старой крови. Их предки сто лет держали северные перевалы.',b:'+8% урона оружием, +1 Сила',p:'Ярость крови: при здоровье ниже 30% урон +25%'},
+ mirel:{n:'Дом Мирель',t:'Хранители запретных книг. Их кровь помнит заклинания.',b:'+15 фокуса, +10% урона магией',p:'Ясный ум: первое умение в каждом бою не тратит фокус'},
+ ratven:{n:'Дом Ратвен',t:'Мастера обмана: притворяются раненными — и бьют в спину.',b:'+5% уклонения, +10% золота',p:'Из тени: после уклонения следующий удар — критический'},
+ osvet:{n:'Дом Освет',t:'Целители и паломники. Верят, что свет можно вернуть.',b:'+10% опыта, +10% к лечению',p:'Тихий свет: в бою каждый ход восстанавливает 2% здоровья'},
+ korvus:{n:'Дом Корвус',t:'Род следопытов. Знают повадки любого зверя.',b:'+5% крита, +10% шанса найти вещь',p:'Ловчий: +20% урона по зверям'},
+};
+const CLASSES={
+ warrior:{n:'Воин',t:'Меч и щит. Крепкий и терпеливый, держит удар и бьёт тяжело.',st:{str:5,agi:3,vit:5,wil:2},gear:[['weapon','steel','main'],['shield','buckler','off']],ab:['warcry','second'],specs:['guardian','berserk']},
+ rogue:{n:'Ловкач',t:'Два клинка, яд и уклонение. Быстрый и опасный.',st:{str:3,agi:6,vit:3,wil:3},gear:[['weapon','knife','main'],['weapon','knife','off']],ab:['poisonblade','smoke'],specs:['assassin','duelist']},
+ mystic:{n:'Мистик крови',t:'Посох и кровавая магия. Хрупкий, но разрушительный.',st:{str:2,agi:3,vit:3,wil:7},gear:[['weapon','staff','main']],ab:['bloodbolt','curse'],specs:['bloodmage','hexer']},
+};
+const SPECS={
+ guardian:{n:'Страж',t:'Стена из стали. Почти не пропускает удары и отвечает на каждый.',ab:['bulwark','retribution']},
+ berserk:{n:'Берсерк',t:'Ярость вместо защиты. Огромный урон ценой здоровья.',ab:['frenzy','whirlwind']},
+ assassin:{n:'Убийца',t:'Добивает раненых одним ударом.',ab:['deathblow','mark']},
+ duelist:{n:'Дуэлянт',t:'Мастер фехтования: парирует и осыпает ударами.',ab:['parry','flurry']},
+ bloodmage:{n:'Кровавый маг',t:'Сжигает врагов и пьёт их кровь.',ab:['storm','feast']},
+ hexer:{n:'Ведьмак',t:'Проклятия, яды и оковы. Враг умирает медленно и беспомощно.',ab:['plague','shackles']},
+};
+const SKINS=['#ead7c4','#d9b08c','#a8714a','#6e4a32','#cfc4d8'];
+const HAIRS=['#3a2638','#141214','#7a4a20','#c8a050','#d8d8e0','#8a1d31'];
+const CLOAKS=[['#8a1d31','#4a0c1a'],['#2c4a6a','#162a40'],['#3a5a2a','#1e3418'],['#4a4a52','#26262c'],['#5a2470','#2e1038'],['#7a5a2a','#4a3414']];
+
+/* ---------- bloodline trees ---------- */
+const TREES={
+ anger:{n:'Гнев',d:'Урон оружием, криты и кровотечение',nodes:[
+  {id:'sharp',t:0,max:5,n:'Острота',d:r=>`+${4*r}% урона оружием`},
+  {id:'cruel',t:0,max:5,n:'Жестокость',d:r=>`+${2*r}% шанса крита`},
+  {id:'bleedn',t:1,max:5,n:'Кровопускание',d:r=>`+${6*r}% шанса кровотечения`},
+  {id:'heavy',t:1,max:5,n:'Тяжёлая рука',d:r=>`+${10*r}% урона критом`},
+  {id:'execute',t:2,max:1,act:1,n:'Казнь',d:()=>'Умение: урон ×2,5 по цели ниже 35% здоровья, иначе ×1,3'},
+  {id:'battle',t:2,max:3,n:'Азарт боя',d:r=>`+${2*r}% урона за каждый ход боя (до 5 ходов)`},
+  {id:'harvest',t:3,max:1,n:'Кровавая жатва',d:()=>'Убийство врага лечит 15% здоровья'},
+  {id:'slayer',t:3,max:3,n:'Губитель',d:r=>`+${10*r}% урона по боссам`}]},
+ vital:{n:'Живучесть',d:'Здоровье, броня и фокус',nodes:[
+  {id:'fort',t:0,max:5,n:'Крепость',d:r=>`+${6*r}% здоровья`},
+  {id:'focus',t:0,max:5,n:'Сосредоточение',d:r=>`+${8*r} фокуса`},
+  {id:'armor',t:1,max:5,n:'Закалка',d:r=>`+${2*r} защиты`},
+  {id:'breath',t:1,max:5,n:'Дыхание',d:r=>`+${2*r} фокуса каждый ход`},
+  {id:'bite',t:2,max:1,act:1,n:'Укус',d:()=>'Умение: урон ×1 и 3 хода восстанавливает 5% здоровья'},
+  {id:'startfp',t:2,max:3,n:'Готовность',d:r=>`+${10*r} фокуса в начале боя`},
+  {id:'undying',t:3,max:1,n:'Бессмертие',d:()=>'Раз за бой смертельный удар оставляет 1 здоровья'},
+  {id:'bloodmag',t:3,max:3,n:'Магия крови',d:r=>`+${10*r}% урона магией`}]},
+ cunning:{n:'Хитрость',d:'Уклонение, яды, добыча и опыт',nodes:[
+  {id:'nimble',t:0,max:5,n:'Увёртливость',d:r=>`+${2*r}% уклонения`},
+  {id:'greed',t:0,max:5,n:'Алчность',d:r=>`+${6*r}% золота`},
+  {id:'wisdom',t:1,max:5,n:'Опыт улиц',d:r=>`+${5*r}% опыта`},
+  {id:'venom',t:1,max:5,n:'Яды',d:r=>`+${6*r}% шанса отравить ударом`},
+  {id:'escape',t:2,max:1,n:'Ускользание',d:()=>'+25% к бегству, неудачный побег не наказывается'},
+  {id:'alchemy',t:2,max:3,n:'Алхимия',d:r=>`Зелья сильнее на ${15*r}%`},
+  {id:'ambush',t:3,max:1,n:'Удар из тени',d:()=>'Первый удар в каждом бою — критический'},
+  {id:'luck',t:3,max:3,n:'Удача',d:r=>`+${10*r}% шанса найти вещь`}]},
+ control:{n:'Контроль',d:'Оглушения, слабость и комбо',nodes:[
+  {id:'daze',t:0,max:5,n:'Оглушение',d:r=>`+${4*r}% шанса оглушить ударом`},
+  {id:'mind',t:0,max:3,n:'Твёрдый разум',d:r=>`+${2*r} Воли`},
+  {id:'suppress',t:1,max:3,n:'Подавление',d:r=>`Ослабленные враги бьют ещё на ${10*r}% слабее`},
+  {id:'cold',t:1,max:3,n:'Холодный расчёт',d:r=>`Умения дешевле на ${8*r}%`},
+  {id:'fear',t:2,max:1,act:1,n:'Ужас',d:()=>'Умение: оглушает всех врагов на 1 ход'},
+  {id:'rhythm',t:2,max:1,n:'Ритм',d:()=>'Комбо-ход наступает каждые 2 хода вместо 3'},
+  {id:'dominate',t:3,max:1,n:'Господство',d:()=>'Оглушённые враги получают +30% урона'},
+  {id:'flow',t:3,max:2,n:'Поток',d:r=>`+${r} действие в комбо-ходе`}]},
+};
+const NODE={};for(const b in TREES)for(const n of TREES[b].nodes)NODE[n.id]=Object.assign({br:b},n);
+const TIER_NEED=[0,5,10,15];
+
+/* ---------- abilities (class, specialisation, bloodline) ---------- */
+const ABIL={
+ warcry:{n:'Боевой клич',fp:25,cd:4,d:'Атака +30% на 3 хода',self:1,run(){buff('cry',3);clog('Боевой клич: атака +30%')}},
+ second:{n:'Второе дыхание',fp:35,cd:5,d:'Лечит 25% здоровья',self:1,run(){heal(maxHp()*.25)}},
+ poisonblade:{n:'Отравленный клинок',fp:20,cd:4,d:'3 следующих удара отравляют',self:1,run(){buff('venom',3);clog('Клинок покрыт ядом')}},
+ smoke:{n:'Дымовая завеса',fp:25,cd:5,d:'Уклонение +40% на 2 хода',self:1,run(){buff('smoke',2);clog('Вас окутывает дым')}},
+ bloodbolt:{n:'Кровавая стрела',fp:18,cd:0,d:'Магия: 15 + Воля×4',run(t){magic(t,magPow(15,4),'Кровавая стрела')}},
+ curse:{n:'Проклятие слабости',fp:20,cd:3,d:'Цель слабеет на 3 хода (−30% атаки)',run(t){addSt(t,'weak',3);clog(`${t.n} ослаблен`)}},
+ bulwark:{n:'Несокрушимость',fp:30,cd:5,d:'Урон по вам −60% на 2 хода',self:1,run(){buff('wall',2);clog('Вы встаёте стеной')}},
+ retribution:{n:'Возмездие',fp:25,cd:5,d:'2 хода отвечаете ударом на каждую атаку',self:1,run(){buff('retri',2);clog('Вы готовы к ответу')}},
+ frenzy:{n:'Кровавое безумие',fp:20,cd:5,d:'Урон +50%, но получаете +30% урона, 3 хода',self:1,run(){buff('frenzy',3);clog('Кровавое безумие!')}},
+ whirlwind:{n:'Вихрь стали',fp:40,cd:3,d:'Урон ×1,2 по всем врагам',run(){alive().forEach(f=>hitFoe(f,1.2,null));clog('Вихрь стали')}},
+ deathblow:{n:'Смертельный удар',fp:45,cd:3,d:'Урон ×3 по цели ниже 30% здоровья, иначе ×1,5',run(t){hitFoe(t,t.hp<t.max*.3?3:1.5,'Смертельный удар')}},
+ mark:{n:'Метка смерти',fp:20,cd:4,d:'Цель получает +25% урона 3 хода',run(t){addSt(t,'mark',3);clog(`${t.n} помечен`)}},
+ parry:{n:'Парирование',fp:20,cd:3,d:'Следующая атака врага отражается с уроном ×1,5',self:1,run(){buff('parry',2);clog('Вы готовы парировать')}},
+ flurry:{n:'Шквал',fp:40,cd:3,d:'4 удара по ×0,6',run(t){for(let i=0;i<4;i++){const x=t.hp>0?t:alive()[0];if(x)hitFoe(x,.6,null)}clog('Шквал ударов')}},
+ storm:{n:'Багровая буря',fp:45,cd:3,d:'Магия 10 + Воля×3 по всем и поджог',run(){alive().forEach(f=>{magic(f,magPow(10,3),null);addSt(f,'burn',3,4+st('wil'))});clog('Багровая буря')}},
+ feast:{n:'Пир крови',fp:35,cd:4,d:'Магия 12 + Воля×4, лечит на весь урон',run(t){const d=magic(t,magPow(12,4),'Пир крови');heal(d)}},
+ plague:{n:'Чума',fp:30,cd:3,d:'Сильный яд всем врагам на 4 хода',run(){alive().forEach(f=>addSt(f,'pois',4,6+st('wil')*2));clog('Чума расползается')}},
+ shackles:{n:'Оковы',fp:40,cd:5,d:'Оглушает цель на 2 хода',run(t){addSt(t,'stun',2);clog(`${t.n} скован`)}},
+ execute:{n:'Казнь',fp:40,cd:3,d:'Урон ×2,5 по цели ниже 35% здоровья, иначе ×1,3',run(t){hitFoe(t,t.hp<t.max*.35?2.5:1.3,'Казнь')}},
+ bite:{n:'Укус',fp:35,cd:4,d:'Урон ×1, 3 хода восстанавливает 5% здоровья',run(t){hitFoe(t,1,'Укус');buff('regen',3)}},
+ fear:{n:'Ужас',fp:45,cd:5,d:'Оглушает всех врагов на 1 ход',run(){alive().forEach(f=>addSt(f,'stun',1));clog('Враги цепенеют от ужаса')}},
+};
 
 /* ---------- items ---------- */
 const RAR=[{n:'Обычный',m:1,aff:0},{n:'Редкий',m:2.5,aff:1},{n:'Эпический',m:6,aff:2},{n:'Легендарный',m:15,aff:3}];
-const SLOTS=['weapon','armor','helm','amulet','ring'];
-const SLOT_N={weapon:'Оружие',armor:'Доспех',helm:'Шлем',amulet:'Амулет',ring:'Кольцо'};
+const CATS=['weapon','shield','helm','armor','gloves','boots','amulet','ring'];
+const CAT_N={weapon:'Оружие',shield:'Щит',helm:'Шлем',armor:'Доспех',gloves:'Перчатки',boots:'Сапоги',amulet:'Амулет',ring:'Кольцо'};
+const EQS=['main','off','helm','armor','gloves','boots','amulet','ring','ring2'];
+const EQ_N={main:'Правая рука',off:'Левая рука',helm:'Голова',armor:'Тело',gloves:'Руки',boots:'Ноги',amulet:'Шея',ring:'Кольцо',ring2:'Кольцо'};
+const WT={
+ sword:{n:'Меч',dt:'slash',sk:[{n:'Рассечь',fp:20,m:1.7},{n:'Выпад',fp:35,m:2.4}]},
+ dagger:{n:'Кинжал',dt:'pierce',sk:[{n:'Укол в спину',fp:15,m:1.5,crit:25},{n:'Ядовитый порез',fp:20,m:1,pois:1}]},
+ axe:{n:'Топор',dt:'slash',sk:[{n:'Рубящий удар',fp:25,m:1.8,bleed:1},{n:'Раскол брони',fp:30,m:1.4,sunder:1}]},
+ mace:{n:'Булава',dt:'blunt',sk:[{n:'Сокрушение',fp:22,m:1.6,stun:30},{n:'Дробящий удар',fp:38,m:2.2}]},
+ hammer:{n:'Молот',dt:'blunt',two:1,sk:[{n:'Землетряс',fp:35,m:1.4,all:1,stun:20},{n:'Молот небес',fp:50,m:3}]},
+ spear:{n:'Копьё',dt:'pierce',two:1,sk:[{n:'Пронзить',fp:30,m:2,pen:1},{n:'Удар древком',fp:20,m:1.2,stun:40}]},
+ katana:{n:'Катана',dt:'slash',sk:[{n:'Танец клинка',fp:35,m:.8,hits:3},{n:'Иайдо',fp:45,m:2.6,crit:25}]},
+ staff:{n:'Посох',dt:'magic',two:1,sk:[{n:'Кровавый шар',fp:20,mag:[18,4]},{n:'Пиявка',fp:30,mag:[12,3],drain:1}]},
+ scythe:{n:'Коса',dt:'slash',two:1,sk:[{n:'Жатва',fp:35,m:1.3,all:1,bleed:1},{n:'Удар жнеца',fp:45,m:2.5}]},
+ shield:{n:'Щит',dt:'blunt',sk:[{n:'Удар щитом',fp:15,m:1,stun:35},{n:'Стойка',fp:10,stance:1}]},
+};
 const BASES={
- weapon:[{id:'rusty',n:'Ржавый меч',lv:1,atk:2},{id:'steel',n:'Стальной клинок',lv:2,atk:5},{id:'dagger',n:'Кинжал теней',lv:4,atk:6,imp:{crit:6}},
-  {id:'saber',n:'Сабля охотника',lv:5,atk:9},{id:'axe',n:'Боевой топор',lv:7,atk:13},{id:'mace',n:'Шипастая булава',lv:9,atk:14,imp:{stun:6}},
-  {id:'dusk',n:'Клинок Сумерек',lv:10,atk:17},{id:'silver',n:'Серебряная Гроза',lv:13,atk:22},{id:'rune',n:'Рунный меч',lv:15,atk:26,imp:{burn:8}},
-  {id:'scythe',n:'Коса Жнеца',lv:17,atk:31,imp:{vamp:4}},{id:'dawn',n:'Клинок Рассвета',lv:19,atk:36}],
+ weapon:[
+  {id:'knife',n:'Нож',lv:1,atk:2,wt:'dagger'},{id:'rusty',n:'Ржавый меч',lv:1,atk:2,wt:'sword'},{id:'club',n:'Дубинка',lv:1,atk:3,wt:'mace'},{id:'staff',n:'Посох ученика',lv:1,atk:2,wt:'staff',imp:{en:6}},
+  {id:'steel',n:'Стальной клинок',lv:2,atk:5,wt:'sword'},{id:'hatchet',n:'Топорик',lv:3,atk:6,wt:'axe'},{id:'dagger',n:'Кинжал теней',lv:4,atk:6,wt:'dagger',imp:{crit:6}},
+  {id:'spear',n:'Копьё стражи',lv:4,atk:10,wt:'spear'},{id:'saber',n:'Сабля охотника',lv:5,atk:9,wt:'sword'},{id:'maul',n:'Кузнечный молот',lv:6,atk:16,wt:'hammer'},
+  {id:'axe',n:'Боевой топор',lv:7,atk:13,wt:'axe'},{id:'stiletto',n:'Стилет',lv:9,atk:11,wt:'dagger',imp:{crit:8}},{id:'mace',n:'Шипастая булава',lv:9,atk:14,wt:'mace',imp:{stun:6}},
+  {id:'bloodstaff',n:'Посох крови',lv:9,atk:8,wt:'staff',imp:{vamp:3}},{id:'dusk',n:'Клинок Сумерек',lv:10,atk:17,wt:'sword'},{id:'katana',n:'Катана странника',lv:11,atk:20,wt:'katana',imp:{crit:5}},
+  {id:'halberd',n:'Алебарда',lv:12,atk:26,wt:'spear'},{id:'silver',n:'Серебряная Гроза',lv:13,atk:22,wt:'sword'},{id:'headsman',n:'Топор палача',lv:14,atk:24,wt:'axe',imp:{bleed:8}},
+  {id:'warhammer',n:'Боевой молот',lv:14,atk:34,wt:'hammer'},{id:'morning',n:'Моргенштерн',lv:15,atk:25,wt:'mace'},{id:'rune',n:'Рунный меч',lv:15,atk:26,wt:'sword',imp:{burn:8}},
+  {id:'voidstaff',n:'Посох Бездны',lv:16,atk:14,wt:'staff',imp:{en:15}},{id:'scythe',n:'Коса Жнеца',lv:17,atk:31,wt:'scythe',imp:{vamp:4}},{id:'moonblade',n:'Лунный клинок',lv:18,atk:33,wt:'katana'},
+  {id:'dawn',n:'Клинок Рассвета',lv:19,atk:36,wt:'sword'}],
+ shield:[{id:'buckler',n:'Баклер',lv:1,def:2,imp:{block:10}},{id:'kite',n:'Каплевидный щит',lv:6,def:4,hp:10,imp:{block:14}},{id:'tower',n:'Ростовой щит',lv:12,def:7,hp:25,imp:{block:18}},{id:'aegis',n:'Эгида Рассвета',lv:17,def:10,hp:40,imp:{block:22}}],
+ helm:[{id:'hood',n:'Капюшон',lv:1,def:1},{id:'cap',n:'Кожаный шлем',lv:3,def:2,hp:5},{id:'ironh',n:'Железный шлем',lv:7,def:4,hp:10},{id:'horned',n:'Рогатый шлем',lv:11,def:6,hp:20},{id:'crownh',n:'Корона Мрака',lv:16,def:8,hp:30,en:10}],
  armor:[{id:'jacket',n:'Дорожная куртка',lv:1,def:1},{id:'leather',n:'Кожаный доспех',lv:2,def:2,hp:10},{id:'chain',n:'Кольчуга',lv:5,def:4,hp:20},
   {id:'guard',n:'Латы стража',lv:9,def:7,hp:35},{id:'eclipse',n:'Плащ Затмения',lv:12,def:10,hp:55,imp:{dodge:4}},{id:'scale',n:'Драконья чешуя',lv:15,def:13,hp:75},{id:'dawnarm',n:'Доспех Рассвета',lv:18,def:16,hp:95}],
- helm:[{id:'hood',n:'Капюшон',lv:1,def:1},{id:'cap',n:'Кожаный шлем',lv:3,def:2,hp:5},{id:'ironh',n:'Железный шлем',lv:7,def:4,hp:10},{id:'horned',n:'Рогатый шлем',lv:11,def:6,hp:20},{id:'crownh',n:'Корона Мрака',lv:16,def:8,hp:30,en:10}],
+ gloves:[{id:'wraps',n:'Обмотки',lv:1,atk:1},{id:'leathergl',n:'Кожаные перчатки',lv:4,atk:2,def:1},{id:'gauntlets',n:'Латные рукавицы',lv:10,atk:3,def:3},{id:'clawgl',n:'Когти ночи',lv:16,atk:5,imp:{crit:4}}],
+ boots:[{id:'shoes',n:'Башмаки',lv:1,def:1},{id:'leatherb',n:'Кожаные сапоги',lv:4,def:2,imp:{dodge:2}},{id:'ironb',n:'Железные сапоги',lv:10,def:4,hp:10},{id:'shadowb',n:'Сапоги тени',lv:16,def:5,imp:{dodge:5}}],
  amulet:[{id:'fangam',n:'Оберег из клыка',lv:2,atk:2},{id:'moonam',n:'Лунный амулет',lv:8,atk:3,en:10},{id:'bloodam',n:'Сердце крови',lv:14,atk:5,hp:30}],
  ring:[{id:'copper',n:'Медное кольцо',lv:1,en:5},{id:'silverr',n:'Серебряное кольцо',lv:6,atk:3,en:5},{id:'bloodr',n:'Кольцо крови',lv:12,atk:6,imp:{vamp:3}},{id:'starr',n:'Звёздное кольцо',lv:17,atk:8,en:15}]};
-const BASE_BY={};for(const s in BASES)for(const b of BASES[s])BASE_BY[b.id]=Object.assign({slot:s},b);
+const BASE_BY={};for(const s in BASES)for(const b of BASES[s])BASE_BY[b.id]=Object.assign({cat:s},b);
 const AFF={
- atk:{n:'Атака',f:l=>1+l*.6,u:''},def:{n:'Защита',f:l=>1+l*.4,u:''},hp:{n:'Здоровье',f:l=>5+l*3,u:''},en:{n:'Энергия',f:l=>3+l,u:''},
+ atk:{n:'Атака',f:l=>1+l*.6,u:''},def:{n:'Защита',f:l=>1+l*.4,u:''},hp:{n:'Здоровье',f:l=>5+l*3,u:''},en:{n:'Фокус',f:l=>3+l,u:''},
  crit:{n:'Крит',f:l=>2+l*.25,u:'%'},dodge:{n:'Уклонение',f:l=>2+l*.2,u:'%'},vamp:{n:'Вампиризм',f:l=>2+l*.15,u:'%'},
  burn:{n:'Шанс поджога',f:l=>5+l*.5,u:'%'},bleed:{n:'Шанс кровотечения',f:l=>5+l*.5,u:'%'},stun:{n:'Шанс оглушения',f:l=>3+l*.3,u:'%'},
- regen:{n:'Энергия за ход',f:l=>1+l*.1,u:''},thorns:{n:'Шипы',f:l=>5+l*.6,u:'%'},gold:{n:'Золото',f:l=>5+l,u:'%'},xp:{n:'Опыт',f:l=>4+l*.6,u:'%'}};
-const SLOT_AFF={weapon:['atk','crit','vamp','burn','bleed','stun'],armor:['def','hp','thorns','dodge','regen'],helm:['def','hp','en','crit','xp'],
- amulet:['atk','en','vamp','crit','xp','gold','regen'],ring:['atk','crit','dodge','gold','en','vamp']};
+ regen:{n:'Фокус за ход',f:l=>1+l*.1,u:''},thorns:{n:'Шипы',f:l=>5+l*.6,u:'%'},gold:{n:'Золото',f:l=>5+l,u:'%'},xp:{n:'Опыт',f:l=>4+l*.6,u:'%'},block:{n:'Блок',f:l=>3+l*.3,u:'%'}};
+const CAT_AFF={weapon:['atk','crit','vamp','burn','bleed','stun'],shield:['def','hp','thorns','block'],armor:['def','hp','thorns','dodge','regen'],helm:['def','hp','en','crit','xp'],
+ gloves:['atk','crit','bleed','stun'],boots:['def','dodge','hp','regen'],amulet:['atk','en','vamp','crit','xp','gold','regen'],ring:['atk','crit','dodge','gold','en','vamp']};
 const LEG_NAMES=['Плач Луны','Последний Вздох','Пепельный Зов','Кровавая Заря','Шёпот Бездны','Сердце Зимы','Песнь Ворона','Тень Рассвета','Клятва Охотника','Вечная Ночь'];
 function rollRar(luck=0){const x=Math.random();return x<.02+luck*.04?3:x<.12+luck*.15?2:x<.42+luck*.2?1:0}
-function genItem(slot,lvl,rar,baseId){
+function genItem(cat,lvl,rar,baseId){
   lvl=clamp(Math.round(lvl),1,20);
   let b;
   if(baseId)b=BASE_BY[baseId];
-  else{const list=BASES[slot].filter(x=>x.lv<=lvl);b=list[Math.max(0,list.length-1-Math.floor(Math.random()*Math.min(2,list.length)))]}
+  else{const list=BASES[cat].filter(x=>x.lv<=lvl);b=list[Math.max(0,list.length-1-Math.floor(Math.random()*Math.min(3,list.length)))]}
   const r=rar==null?rollRar():rar;
-  const it={uid:S.uid++,slot:b.slot||slot,base:b.id,lvl:Math.max(lvl,b.lv),rar:r,up:0,aff:{}};
+  const it={uid:S.uid++,cat:b.cat||cat,base:b.id,lvl:Math.max(lvl,b.lv),rar:r,up:0,aff:{}};
   const sc=(1+(it.lvl-b.lv)*.06)*(r===3?1.25:1);
   for(const k of['atk','def','hp','en'])if(b[k])it[k]=Math.max(1,Math.round(b[k]*sc));
   if(b.imp)for(const k in b.imp)it.aff[k]=b.imp[k];
-  const pool=SLOT_AFF[it.slot].slice();
+  const pool=CAT_AFF[it.cat].slice();
   for(let i=0;i<RAR[r].aff&&pool.length;i++){const k=pool.splice(Math.floor(Math.random()*pool.length),1)[0];it.aff[k]=(it.aff[k]||0)+Math.max(1,Math.round(AFF[k].f(it.lvl)*rnd(.75,1.15)))}
   if(r===3)it.name=pick(LEG_NAMES);
   return it;
 }
-const itemName=it=>(it.name||BASE_BY[it.base].n)+(it.up?` +${it.up}`:'');
-function itemStat(it,k){let v=it.aff[k]||0;if(it[k])v+=Math.round(it[k]*(1+.08*it.up));return v}
+const itemBase=it=>BASE_BY[it.base]||{n:'?',cat:it.cat};
+const itemName=it=>(it.name||itemBase(it).n)+(it.up?` +${it.up}`:'');
+const isTwo=it=>it&&it.cat==='weapon'&&!!(WT[itemBase(it).wt]||{}).two;
+function itemStat(it,k){if(!it)return 0;let v=it.aff[k]||0;if(it[k])v+=Math.round(it[k]*(1+.08*it.up));return v}
 const itemPrice=it=>Math.round((15+it.lvl*10)*RAR[it.rar].m*(1+.25*it.up));
 const sellPrice=it=>Math.round(itemPrice(it)*.3);
 function power(it){if(!it)return 0;let p=itemStat(it,'atk')*3+itemStat(it,'def')*3+itemStat(it,'hp')/4+itemStat(it,'en')/2;for(const k in it.aff)if(!['atk','def','hp','en'].includes(k))p+=it.aff[k]*2;return p}
+function itemIcon(it){const b=itemBase(it);return it.cat==='weapon'?'i_'+(b.wt||'sword'):'i_'+it.cat}
 function itemLines(it){
   const out=[];for(const k of['atk','def','hp','en']){const v=itemStat(it,k);if(v)out.push(`${AFF[k].n} +${v}`)}
   for(const k in it.aff)if(!['atk','def','hp','en'].includes(k))out.push(`${AFF[k].n} +${it.aff[k]}${AFF[k].u}`);
   return out.join(' · ');
 }
-function itemHTML(it,extra=''){return`<b class="r${it.rar}">${itemName(it)}</b><small>${SLOT_N[it.slot]} · ур. ${it.lvl} · ${RAR[it.rar].n}${extra}</small><span class="lines">${itemLines(it)}</span>`}
+function itemSub(it){const b=itemBase(it);return(it.cat==='weapon'?`${WT[b.wt].n}${isTwo(it)?', двуручное':''}`:CAT_N[it.cat])+` · ур. ${it.lvl} · ${RAR[it.rar].n}`}
+function itemHTML(it,extra=''){return`<b class="r${it.rar}">${esc(itemName(it))}</b><small>${itemSub(it)}${extra}</small><span class="lines">${itemLines(it)}</span>`}
+function compareTo(it){
+  if(it.cat==='ring')return Math.min(power(S.eq.ring),power(S.eq.ring2));
+  if(it.cat==='weapon')return power(S.eq.main);
+  if(it.cat==='shield')return S.eq.off&&S.eq.off.cat==='shield'?power(S.eq.off):0;
+  return power(S.eq[it.cat]);
+}
 const INV_MAX=40;
 function addItem(it){if(S.inv.length>=INV_MAX){const g=sellPrice(it);S.gold+=g;return`${itemName(it)} продан за ${g} (рюкзак полон)`}S.inv.push(it);return null}
 
@@ -509,33 +719,67 @@ function genWorld(seed){
 const passable=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&tiles[y*W+x]!==T_WATER&&tiles[y*W+x]!==T_MOUNT;
 const danger=(x,y)=>dangerMap[y*W+x];
 
-/* ---------- state ---------- */
-let S;
+/* ---------- state & derived stats ---------- */
+let S,C=null;
 const tb=k=>S.trophies.reduce((a,t)=>a+((TROPHY[t]&&TROPHY[t][k])||0),0);
-const gs=k=>SLOTS.reduce((a,s)=>a+(S.eq[s]?itemStat(S.eq[s],k):0),0);
-const maxHp=()=>40+S.vit*10+S.lvl*5+gs('hp')+tb('hp');
-const maxEn=()=>20+S.wil*4+gs('en')+tb('en');
-const atk=()=>4+S.str*2+gs('atk')+tb('atk');
-const def=()=>gs('def')+Math.floor(S.vit/2)+tb('def');
-const crit=()=>Math.min(75,5+S.agi*1.5+gs('crit')+tb('crit')+(C&&C.cry&&C.cry.c||0));
-const dodge=()=>Math.min(40,3+S.agi+gs('dodge'));
+const gs=k=>EQS.reduce((a,s)=>a+itemStat(S.eq[s],k),0);
+const gearAtk=()=>EQS.reduce((a,s)=>a+(s==='main'||(s==='off'&&S.eq.off&&S.eq.off.cat==='weapon')?0:itemStat(S.eq[s],'atk')),0);
+const tr=id=>(S.tree&&S.tree[id])||0;
+const B=k=>(S.bon&&S.bon[k])||0;
+const lin=k=>S.lin===k;
+const st=k=>S[k]+(k==='wil'?tr('mind')*2:0);
+const maxHp=()=>Math.round((40+st('vit')*10+S.lvl*5+gs('hp')+tb('hp')+B('hp'))*(1+.06*tr('fort')));
+const maxFp=()=>40+st('wil')*3+8*tr('focus')+B('fp')+gs('en')+tb('en')+(lin('mirel')?15:0);
+const fpRegen=()=>6+2*tr('breath')+B('regen')+gs('regen');
+const dmgMul=()=>1+.04*tr('sharp')+B('dmg')/100+(lin('valdrak')?.08:0);
+const atkMain=()=>4+st('str')*2+itemStat(S.eq.main,'atk')+gearAtk()+tb('atk');
+const atkOff=()=>{const o=S.eq.off;if(o&&o.cat==='weapon')return Math.round(2+st('agi')+itemStat(o,'atk')*.75);return 2+st('str')};
+const def=()=>gs('def')+Math.floor(st('vit')/2)+tb('def')+B('def')+2*tr('armor');
+const crit=()=>Math.min(75,5+st('agi')*1.5+gs('crit')+tb('crit')+B('crit')+2*tr('cruel')+(lin('korvus')?5:0));
+const dodge=()=>Math.min(55,3+st('agi')+gs('dodge')+B('dodge')+2*tr('nimble')+(lin('ratven')?5:0)+(C&&C.pb.smoke?40:0));
+const block=()=>S.eq.off&&S.eq.off.cat==='shield'?Math.min(45,itemStat(S.eq.off,'block')):0;
+const magMul=()=>1+.1*tr('bloodmag')+(lin('mirel')?.1:0)+B('dmg')/100;
+const magPow=(base,k)=>Math.round((base+st('wil')*k)*magMul());
 const xpNeed=l=>Math.round(12*l*l+20*l);
+const mainWT=()=>S.eq.main?itemBase(S.eq.main).wt:'fist';
+const dtOf=hand=>{const it=hand==='off'?S.eq.off:S.eq.main;if(!it)return'blunt';return it.cat==='shield'?'blunt':WT[itemBase(it).wt].dt};
+function rangeTxt(v){return`${Math.round(v*.85)}–${Math.round(v*1.15)}`}
 
 function newState(){
-  return{ver:SAVE_VER,x:START.x,y:START.y,prev:{x:START.x,y:START.y},explored:new Array(W*H).fill(0),lvl:1,xp:0,gold:40,str:3,agi:3,vit:3,wil:3,pts:0,sp:0,
-    hp:1,en:1,pots:3,elix:1,tails:0,trophies:[],bosses:{},bounty:null,lastTown:'brod',steps:0,enemies:[],uid:1,kills:{},intro:true,won:false,
-    eq:{weapon:null,armor:null,helm:null,amulet:null,ring:null},inv:[],skills:{hit:1,rush:1,guard:1},q:{},shr:{},qi:{}};
+  return{ver:SAVE_VER,name:'Охотник',look:null,lin:null,cls:null,spec:null,needCreate:true,
+    x:START.x,y:START.y,prev:{x:START.x,y:START.y},explored:new Array(W*H).fill(0),lvl:1,xp:0,gold:40,str:3,agi:3,vit:3,wil:3,pts:0,
+    tp:0,tree:{},bon:{},lvq:0,lvopts:null,
+    hp:1,en:1,pots:3,fpots:2,tails:0,trophies:[],bosses:{},bounty:null,lastTown:'brod',steps:0,enemies:[],uid:1,kills:{},intro:true,won:false,
+    eq:{main:null,off:null,helm:null,armor:null,gloves:null,boots:null,amulet:null,ring:null,ring2:null},inv:[],q:{},shr:{},qi:{}};
+}
+/* v3 (48×48 world) -> v4 */
+function migrate3(o){
+  const s=newState();S=s;
+  for(const k of['lvl','xp','gold','str','agi','vit','wil','pts','pots','tails','trophies','bosses','kills','won'])if(o[k]!==undefined)s[k]=o[k];
+  s.uid=Math.max(o.uid||1,1)+1000;s.intro=false;s.fpots=o.elix||0;
+  s.eq.main=genItem('weapon',1,0,['rusty','steel','saber','dusk','silver'][o.weapon||0]||'rusty');
+  s.eq.armor=genItem('armor',1,0,['jacket','leather','chain','guard','eclipse'][o.armor||0]||'jacket');
+  s.tp=(s.lvl-1)*2;s.migrated=true;
+  return s;
+}
+/* v4 -> v5: keep world & progress, move gear to the new slots, refund skills as bloodline points */
+function migrate4(o){
+  const s=newState();S=s;
+  for(const k of['x','y','prev','explored','lvl','xp','gold','str','agi','vit','wil','pts','pots','tails','trophies','bosses','bounty','lastTown','steps','enemies','uid','kills','won','q','shr','qi'])if(o[k]!==undefined)s[k]=o[k];
+  s.intro=false;s.fpots=o.elix||0;s.uid=(o.uid||1)+10;
+  const fix=it=>{if(!it)return null;it.cat=it.cat||it.slot;delete it.slot;if(!BASE_BY[it.base])return null;return it};
+  const e=o.eq||{};
+  s.eq.main=fix(e.weapon);s.eq.armor=fix(e.armor);s.eq.helm=fix(e.helm);s.eq.amulet=fix(e.amulet);s.eq.ring=fix(e.ring);
+  s.inv=(o.inv||[]).map(fix).filter(Boolean);
+  const spent=Object.values(o.skills||{}).reduce((a,r)=>a+r,0)-3;
+  s.tp=Math.max((s.lvl-1)*2,(o.sp||0)+Math.max(0,spent)+(s.lvl-1));
+  s.migrated=true;
+  return s;
 }
 function migrate(o){
   if(o.ver===SAVE_VER)return o;
-  const s=newState();S=s;
-  for(const k of['lvl','xp','gold','str','agi','vit','wil','pts','pots','elix','tails','trophies','bosses','kills','won'])if(o[k]!==undefined)s[k]=o[k];
-  s.uid=Math.max(o.uid||1,1)+1000;s.intro=false;
-  s.eq.weapon=genItem('weapon',1,0,['rusty','steel','saber','dusk','silver'][o.weapon||0]||'rusty');
-  s.eq.armor=genItem('armor',1,0,['jacket','leather','chain','guard','eclipse'][o.armor||0]||'jacket');
-  for(const id of['hit','rush','bite','whirl','seal','guard'])if(SKB[id].lv<=s.lvl)s.skills[id]=1;
-  s.sp=s.lvl-1;s.migrated=true;
-  return s;
+  if(o.ver===4)return migrate4(o);
+  return migrate3(o);
 }
 function save(){try{const o=Object.assign({},S);delete o.migrated;localStorage.setItem(SAVE_KEY,JSON.stringify(o))}catch(e){}}
 function load(){try{const t=localStorage.getItem(SAVE_KEY);return t?JSON.parse(t):null}catch(e){return null}}
@@ -551,11 +795,10 @@ function groupTypes(L,bio){
   const pool=[];for(const k in EN){const d=EN[k];if(d.min>L||d.max<L)continue;const w=d.bio?(d.bio===bio?5:0.3):1;pool.push([k,w])}
   const tot=pool.reduce((a,p)=>a+p[1],0);
   const one=()=>{let r=Math.random()*tot;for(const p of pool){r-=p[1];if(r<=0)return p[0]}return pool[0][0]};
-  const n=1+(Math.random()<.5?1:0)+(L>2&&Math.random()<.3?1:0);
+  const n=1+(Math.random()<.45?1:0)+(L>3&&Math.random()<.25?1:0);
   return Array.from({length:n},one);
 }
 function spawnGroup(far,near){
-  // near: spawn around a point (the player or the start) so the area you are in never runs dry
   for(let tries=0;tries<300;tries++){
     let x,y;
     if(near){x=near.x+Math.round(rnd(-16,16));y=near.y+Math.round(rnd(-16,16));if(x<1||y<1||x>W-2||y>H-2)continue}
@@ -586,28 +829,26 @@ const groupAt=(x,y)=>S.enemies.find(g=>g.x===x&&g.y===y&&g.stun<=0);
 
 /* ---------- quests ---------- */
 function qProgress(id){
-  const q=QUESTS[id],st=S.q[id];if(!st)return 0;
+  const q=QUESTS[id],sq=S.q[id];if(!sq)return 0;
   if(q.k==='visit')return Math.min(q.c,['ob1','ob2','ob3'].filter(o=>S.shr[o]).length);
   if(q.k==='have')return Math.min(q.c,S.tails||0);
   if(q.k==='boss')return S.bosses[q.e]?1:0;
-  return Math.min(q.c,st.have||0);
+  return Math.min(q.c,sq.have||0);
 }
 const qNeed=id=>QUESTS[id].c||1;
 const qReady=id=>S.q[id]&&S.q[id].st==='active'&&qProgress(id)>=qNeed(id);
 function qAvail(id){const q=QUESTS[id];return!S.q[id]&&(!q.req||(S.q[q.req]&&S.q[q.req].st==='done'))}
-function npcMark(npc){
-  let m=null;for(const id in QUESTS){if(QUESTS[id].g!==npc)continue;if(qReady(id))return'?';if(qAvail(id)&&S.lvl>=QUESTS[id].lv)m='!'}return m;
-}
+function npcMark(npc){let m=null;for(const id in QUESTS){if(QUESTS[id].g!==npc)continue;if(qReady(id))return'?';if(qAvail(id)&&S.lvl>=QUESTS[id].lv)m='!'}return m}
 function onKill(type){
   const msgs=[];
-  for(const id in S.q){const q=QUESTS[id],st=S.q[id];if(!q||st.st!=='active'||q.e!==type)continue;
-    if(q.k==='kill'&&st.have<q.c)st.have++;
-    if(q.k==='collect'&&st.have<q.c&&Math.random()<.55){st.have++;msgs.push(`${q.item} (${st.have}/${q.c})`)}}
+  for(const id in S.q){const q=QUESTS[id],sq=S.q[id];if(!q||sq.st!=='active'||q.e!==type)continue;
+    if(q.k==='kill'&&sq.have<q.c)sq.have++;
+    if(q.k==='collect'&&sq.have<q.c&&Math.random()<.55){sq.have++;msgs.push(`${q.item} (${sq.have}/${q.c})`)}}
   return msgs;
 }
 function rewardText(r){
-  const p=[];if(r.gold)p.push(`${r.gold} золота`);if(r.xp)p.push(`${r.xp} опыта`);if(r.sp)p.push(`${r.sp} очк. навыков`);if(r.pts)p.push(`${r.pts} очк. характеристик`);
-  if(r.pots)p.push(`зелья ×${r.pots}`);if(r.elix)p.push(`эликсиры ×${r.elix}`);if(r.item)p.push(`${RAR[r.item[1]].n.toLowerCase()} предмет: ${SLOT_N[r.item[0]].toLowerCase()}`);
+  const p=[];if(r.gold)p.push(`${r.gold} золота`);if(r.xp)p.push(`${r.xp} опыта`);if(r.sp)p.push(`${r.sp*2} очк. кровных линий`);if(r.pts)p.push(`${r.pts} дар${r.pts>1?'а':''} уровня`);
+  if(r.pots)p.push(`зелья здоровья ×${r.pots}`);if(r.elix)p.push(`зелья фокуса ×${r.elix}`);if(r.item)p.push(`${RAR[r.item[1]].n.toLowerCase()} предмет: ${CAT_N[r.item[0]].toLowerCase()}`);
   return p.join(', ');
 }
 
@@ -706,7 +947,7 @@ function render(ts){
   }
   const hx=ox+ax*T,hy=oy+ay*T;
   ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(hx+T/2,hy+T*.9,T*.3,T*.08,0,0,7);ctx.fill();
-  ctx.drawImage(getSprite('hero'),hx+T*.1,hy+T*.02,T*.8,T*.8);
+  ctx.drawImage(getSprite('hero',heroLook()),hx+T*.1,hy+T*.02,T*.8,T*.8);
   ctx.fillStyle=vignette;ctx.fillRect(0,0,vw,vh);
 }
 function bfs(tx,ty){
@@ -734,7 +975,7 @@ cv.addEventListener('pointerup',e=>{
   if(p&&p.length)path=p;else{path=[];toast(S.explored[ty*W+tx]?'Туда не пройти':'Эти земли ещё не разведаны')}
 });
 document.addEventListener('keydown',e=>{
-  if(busy())return;
+  if(busy()||e.target.tagName==='INPUT')return;
   const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];
   if(!d)return;e.preventDefault();const nx=S.x+d[0],ny=S.y+d[1];
   if(passable(nx,ny))path=[{x:nx,y:ny}];
@@ -743,7 +984,6 @@ function stepTo(n){
   anim={fx:S.x,fy:S.y,t0:performance.now()};
   S.prev={x:S.x,y:S.y};S.x=n.x;S.y=n.y;S.steps++;reveal();
   if(S.steps%3===0)S.hp=Math.min(maxHp(),S.hp+1);
-  if(S.steps%2===0)S.en=Math.min(maxEn(),S.en+1);
   let g=groupAt(S.x,S.y);
   const l=locAt[S.y*W+S.x];
   if(g){path=[];fightGroup(g);return}
@@ -752,7 +992,7 @@ function stepTo(n){
   g=groupAt(S.x,S.y);
   if(g){path=[];fightGroup(g);return}
   if(S.steps%10===0){
-    const nearby=S.enemies.filter(g=>Math.abs(g.x-S.x)+Math.abs(g.y-S.y)<18).length;
+    const nearby=S.enemies.filter(e=>Math.abs(e.x-S.x)+Math.abs(e.y-S.y)<18).length;
     if(nearby<9)spawnGroup(true,S);else if(S.enemies.length<ENEMY_CAP)spawnGroup(true);
   }
   if(S.steps%10===0)save();
@@ -766,38 +1006,92 @@ function loop(ts){
 
 /* ---------- HUD ---------- */
 let toastT;
-function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2000)}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2200)}
 function zoneName(){
   const l=locAt[S.y*W+S.x];if(l)return l.name||NPCS[l.npc].n;
   const b=biomeMap[S.y*W+S.x];if(b===1)return'Ледяные пустоши';if(b===2)return'Гнилые топи';
   const dg=danger(S.x,S.y);return dg<=2?'Окрестности Брода':dg<=5?'Пепельные пустоши':dg<=8?'Вороньи земли':dg<=12?'Мёртвые холмы':dg<=16?'Багровый предел':'Тень Ноктюрна';
 }
+const heroPending=()=>!!(S.lvq||S.tp||S.pts||(S.lvl>=10&&!S.spec));
 function updateHud(){
-  S.hp=Math.min(S.hp,maxHp());S.en=Math.min(S.en,maxEn());
+  S.hp=Math.min(S.hp,maxHp());
   $('#hLvl').textContent=S.lvl;
   $('#hHp').style.width=(S.hp/maxHp()*100)+'%';$('#hHpT').textContent=`${S.hp} / ${maxHp()}`;
-  $('#hEn').style.width=(S.en/maxEn()*100)+'%';$('#hEnT').textContent=`${S.en} / ${maxEn()}`;
+  $('#hEn').style.width='100%';$('#hEnT').textContent=`Фокус ${maxFp()}`;
   $('#hXp').style.width=Math.min(100,S.xp/xpNeed(S.lvl)*100)+'%';
   $('#hGold').textContent=S.gold;
   const l=locAt[S.y*W+S.x];
   $('#hZone').textContent=zoneName();
   $('#hThreat').textContent=l&&l.type==='town'?'безопасно':'угроза '+danger(S.x,S.y);
-  $('#ptsDot').hidden=!(S.pts||S.sp);
+  $('#ptsDot').hidden=!heroPending();
   $('#qDot').hidden=!Object.keys(S.q).some(qReady);
 }
 
 /* ---------- sheets ---------- */
 const ov=$('#ov');let sheetRender=null;
 function openSheet(title,bodyFn,opts={}){
-  sheetRender=()=>{const st=ov.querySelector('.sheet-body')?.scrollTop||0;
-    ov.innerHTML=`<div class="sheet" role="dialog" aria-label="${title}"><div class="sheet-head"><h2>${title}</h2>${opts.noClose?'':'<button class="x" data-act="close" aria-label="Закрыть">×</button>'}</div><div class="sheet-body">${bodyFn()}</div></div>`;
-    const b=ov.querySelector('.sheet-body');if(b&&opts.keep)b.scrollTop=st;opts.keep=true;if(opts.after)opts.after()};
+  sheetRender=()=>{const st0=ov.querySelector('.sheet-body')?.scrollTop||0;
+    const ttl=typeof title==='function'?title():title;
+    ov.innerHTML=`<div class="sheet" role="dialog" aria-label="${esc(ttl)}"><div class="sheet-head"><h2>${esc(ttl)}</h2>${opts.noClose?'':'<button class="x" data-act="close" aria-label="Закрыть">×</button>'}</div><div class="sheet-body">${bodyFn()}</div></div>`;
+    const b=ov.querySelector('.sheet-body');if(b&&opts.keep)b.scrollTop=st0;opts.keep=true;if(opts.after)opts.after()};
   sheetRender();ov.hidden=false;
 }
 function closeSheet(){ov.hidden=true;ov.innerHTML='';sheetRender=null;updateHud();save()}
 const ACT={};
 ov.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const f=ACT[b.dataset.act];if(f){const r=f(b.dataset.arg);if(r!=='nore'&&sheetRender&&!ov.hidden)sheetRender();updateHud()}});
+ov.addEventListener('input',e=>{
+  const r=e.target.closest('[data-vol]');if(r){Snd.setVol(r.dataset.vol,+r.value);const out=r.parentElement.querySelector('output');if(out)out.textContent=r.value+'%';return}
+  if(e.target.id==='cr-name'){S.name=e.target.value.slice(0,16)}
+});
 ACT.close=closeSheet;
+
+/* ---------- character creation ---------- */
+let crStep=0;
+function crBody(){
+  const L=S.look,steps=`<div class="steps">${[0,1,2].map(i=>`<i class="${i<=crStep?'on':''}"></i>`).join('')}</div>`;
+  const portrait=`<div class="portrait"><div class="pimg"><img src="${spriteURL('hero',L)}" alt=""></div><div><b style="font-size:18px">${esc(S.name||'Безымянный')}</b><p class="lore" style="font-size:13px">${S.lin?LINEAGES[S.lin].n:'Род не выбран'} · ${S.cls?CLASSES[S.cls].n:'Призвание не выбрано'}</p></div></div>`;
+  let h=steps+portrait;
+  if(crStep===0){
+    h+=`<h3>Имя</h3><input class="namein" id="cr-name" maxlength="16" value="${esc(S.name)}" placeholder="Имя героя" autocomplete="off">
+    <h3>Кожа</h3><div class="swatches">${SKINS.map(c=>`<button class="sw ${L.s===c?'on':''}" style="background:${c}" data-act="crLook" data-arg="s|${c}" aria-label="Цвет кожи"></button>`).join('')}</div>
+    <h3>Волосы</h3><div class="swatches">${HAIRS.map(c=>`<button class="sw ${L.h===c?'on':''}" style="background:${c}" data-act="crLook" data-arg="h|${c}" aria-label="Цвет волос"></button>`).join('')}</div>
+    <h3>Плащ</h3><div class="swatches">${CLOAKS.map((c,i)=>`<button class="sw ${L.C===c[0]?'on':''}" style="background:linear-gradient(135deg,${c[0]} 50%,${c[1]} 50%)" data-act="crLook" data-arg="C|${i}" aria-label="Цвет плаща"></button>`).join('')}</div>
+    <button class="btn wide" data-act="crNext">Дальше: родословная</button>`;
+  }else if(crStep===1){
+    h+=`<p>Родословная — это кровь твоих предков. Она даёт постоянный бонус и особую способность.</p><div class="cards">${Object.keys(LINEAGES).map(k=>{const l=LINEAGES[k];
+      return`<button class="card ${S.lin===k?'on':''}" data-act="crLin" data-arg="${k}"><b>${l.n}</b><small>${l.t}</small><span class="bon">${l.b}</span><span class="pas">${l.p}</span></button>`}).join('')}</div>
+    <div class="steps" style="gap:8px"><button class="btn ghost" style="flex:1" data-act="crBack">Назад</button><button class="btn" style="flex:2" data-act="crNext" ${S.lin?'':'disabled'}>Дальше: призвание</button></div>`;
+  }else{
+    h+=`<p>Призвание определяет оружие, умения и то, кем ты станешь на 10 уровне.</p><div class="cards">${Object.keys(CLASSES).map(k=>{const c=CLASSES[k];
+      return`<button class="card ${S.cls===k?'on':''}" data-act="crCls" data-arg="${k}"><b>${c.n}</b><small>${c.t}</small><span class="bon">Сила ${c.st.str} · Ловкость ${c.st.agi} · Живучесть ${c.st.vit} · Воля ${c.st.wil}</span>
+       <span class="pas">Умения: ${c.ab.map(a=>ABIL[a].n).join(', ')}</span><small>На 10 уровне: ${c.specs.map(s=>SPECS[s].n).join(' или ')}</small></button>`}).join('')}</div>
+    <div class="steps" style="gap:8px"><button class="btn ghost" style="flex:1" data-act="crBack">Назад</button><button class="btn" style="flex:2" data-act="crDone" ${S.cls?'':'disabled'}>Начать путь</button></div>`;
+  }
+  return h;
+}
+function openCreation(){if(!S.look)S.look={s:SKINS[0],h:HAIRS[0],C:CLOAKS[0][0],c:CLOAKS[0][1]};crStep=0;openSheet(()=>S.keepProgress?'Кто ты, охотник?':'Новый герой',crBody,{noClose:true})}
+ACT.crLook=a=>{const[k,v]=a.split('|');if(k==='C'){const c=CLOAKS[+v];S.look.C=c[0];S.look.c=c[1]}else S.look[k]=v;S.look=Object.assign({},S.look)};
+ACT.crNext=()=>{if(crStep===0&&!S.name.trim())S.name='Охотник';crStep=Math.min(2,crStep+1);const b=ov.querySelector('.sheet-body');if(b)b.scrollTop=0};
+ACT.crBack=()=>{crStep=Math.max(0,crStep-1)};
+ACT.crLin=k=>{S.lin=k};ACT.crCls=k=>{S.cls=k};
+ACT.crDone=()=>{
+  if(!S.lin||!S.cls)return;
+  const c=CLASSES[S.cls],keep=S.keepProgress;
+  if(!keep){Object.assign(S,c.st);for(const[cat,id,slot]of c.gear)S.eq[slot]=genItem(cat,1,0,id);S.eq.armor=genItem('armor',1,0,'jacket')}
+  else{for(const[cat,id]of c.gear)addItem(genItem(cat,Math.max(1,S.lvl-1),1,id))}
+  if(S.lin==='valdrak')S.str+=1;
+  S.needCreate=false;delete S.keepProgress;S.hp=maxHp();
+  closeSheet();
+  if(keep){openSheet('Новая кровь',()=>`<p>Мир стал глубже. Теперь у тебя есть <b>родословная</b>, <b>призвание</b> и <b>кровные линии</b> — четыре ветви умений.</p>
+    <p>Бой изменился: это дуэль с <b>фокусом</b> (синяя полоса). Удар оружием бесплатен, приёмы и умения тратят фокус. Каждые три хода наступает <b>комбо-ход</b>: можно сделать несколько действий подряд.</p>
+    <p>За прошлые уровни у тебя <b>${S.tp}</b> очк. кровных линий. Оружие твоего призвания уже в рюкзаке. Всё это — в разделе «Герой».</p>
+    <button class="btn wide" data-act="close">В путь</button>`,{noClose:true});return'nore'}
+  openSheet('Пепельная Луна',()=>`<p class="lore">Сто ночей луна не заходит над Долиной Пепла. Она стала серой, как зола, и в её свете из могил встают мертвецы, а волки забывают страх.</p>
+   <p>${esc(S.name)} из рода ${LINEAGES[S.lin].n.replace('Дом ','')} пришёл в Серый Брод, чтобы остановить Князя Ноктюрна.</p>
+   <p>Нажимай на карту, чтобы идти. Цифра над врагом — его уровень. Люди со знаком «!» дают задания. В бою удар оружием бесплатен, а приёмы тратят фокус. Каждые три хода — комбо-ход.</p>
+   <button class="btn wide" data-act="close">В путь</button>`,{noClose:true});
+  return'nore';
+};
 
 /* ---------- locations ---------- */
 let townTab='inn',curTown=null,shopStock={};
@@ -805,8 +1099,9 @@ const innCost=()=>4+S.lvl*3;
 const TIER_MAX=[0,6,10,14,17,20];
 function makeStock(tier,trader){
   const lv=trader?S.lvl:Math.min(S.lvl+1,TIER_MAX[tier]),out=[];
-  for(const s of SLOTS)out.push(genItem(s,lv,trader?(Math.random()<.12?3:Math.random()<.45?2:1):(Math.random()<.12?2:Math.random()<.45?1:0)));
-  for(let i=0;i<(trader?3:2);i++)out.push(genItem(pick(SLOTS),lv,trader?(Math.random()<.3?2:1):(Math.random()<.3?1:0)));
+  const cats=['weapon','weapon',...CATS.slice(1)];
+  for(const s of cats)out.push(genItem(s,lv,trader?(Math.random()<.12?3:Math.random()<.45?2:1):(Math.random()<.12?2:Math.random()<.45?1:0)));
+  if(trader)for(let i=0;i<2;i++)out.push(genItem(pick(CATS),lv,Math.random()<.3?2:1));
   return out;
 }
 function enterLoc(l){
@@ -814,9 +1109,9 @@ function enterLoc(l){
   if(l.type==='npc'){openNpc(l.npc);return}
   if(l.type==='shrine'){
     if(S.shr[l.id]){openSheet(l.name,()=>`<p class="lore">Камень холоден. Его свет ты уже унёс с собой.</p><button class="btn ghost wide" data-act="close">Уйти</button>`);return}
-    S.shr[l.id]=true;S.pts++;S.hp=maxHp();S.en=maxEn();Snd.sfx('level');
+    S.shr[l.id]=true;S.lvq++;S.hp=maxHp();Snd.sfx('level');
     const n=['ob1','ob2','ob3'].filter(o=>S.shr[o]).length;
-    openSheet(l.name,()=>`<div class="big"><div class="glyph" style="color:#bfe6ff;text-shadow:0 0 20px #5ab0ff">☾</div><p>Ты касаешься обелиска, и по рукам растекается холодный свет. Раны затягиваются.</p><p><b>+1 очко характеристик.</b> Обелисков найдено: ${n} из 3.</p></div><button class="btn wide" data-act="close">Дальше</button>`);
+    openSheet(l.name,()=>`<div class="big"><div class="glyph" style="color:#bfe6ff;text-shadow:0 0 20px #5ab0ff">☾</div><p>Ты касаешься обелиска, и по рукам растекается холодный свет. Раны затягиваются.</p><p><b>+1 дар уровня</b> — выбери его в разделе «Герой». Обелисков найдено: ${n} из 3.</p></div><button class="btn wide" data-act="close">Дальше</button>`);
     return;
   }
   if(S.bosses[l.boss]){openSheet(l.name,()=>`<p class="lore">Здесь стало тихо. Только пепел медленно оседает на камни.</p><button class="btn ghost wide" data-act="close">Уйти</button>`);return}
@@ -828,32 +1123,32 @@ function enterLoc(l){
 }
 ACT.boss=id=>{closeSheet();const b=BOSS[id];startCombat([mkBoss(id),...b.adds.map(([t,L])=>mkEnemy(t,L))],{boss:id,title:b.n});return'nore'};
 function shopRows(key,mult){
-  const st=shopStock[key]||[];
-  if(!st.length)return'<p class="lore">Всё раскупили.</p>';
-  return`<div class="rows">${st.map((it,i)=>{const p=Math.round(itemPrice(it)*mult),cur=S.eq[it.slot],d=power(it)-power(cur);
-    return`<div class="row rb${it.rar}"><div class="t">${itemHTML(it,d>0?` · <span class="up">▲ лучше</span>`:d<0?` · <span class="down">▼ хуже</span>`:'')}</div><div class="btns"><span class="price">${p}</span><button class="btn sm" data-act="buyIt" data-arg="${key}|${i}|${mult}" ${S.gold<p?'disabled':''}>Купить</button></div></div>`}).join('')}</div>`;
+  const sk=shopStock[key]||[];
+  if(!sk.length)return'<p class="lore">Всё раскупили.</p>';
+  return`<div class="rows">${sk.map((it,i)=>{const p=Math.round(itemPrice(it)*mult),d=power(it)-compareTo(it);
+    return`<div class="row rb${it.rar}"><img class="ic" src="${spriteURL(itemIcon(it))}" alt="" style="width:34px"><div class="t">${itemHTML(it,d>0?` · <span class="up">▲ лучше</span>`:d<0?` · <span class="down">▼ хуже</span>`:'')}</div><div class="btns"><span class="price">${p}</span><button class="btn sm" data-act="buyIt" data-arg="${key}|${i}|${mult}" ${S.gold<p?'disabled':''}>Купить</button></div></div>`}).join('')}</div>`;
 }
-ACT.buyIt=a=>{const[key,i,m]=a.split('|'),st=shopStock[key],it=st&&st[+i];if(!it)return;const p=Math.round(itemPrice(it)*+m);
-  if(S.gold<p)return;if(S.inv.length>=INV_MAX){toast('Рюкзак полон');return}S.gold-=p;S.inv.push(it);st.splice(+i,1);Snd.sfx('coin');toast(`Куплено: ${itemName(it)}. Надеть можно в разделе «Герой»`)};
+ACT.buyIt=a=>{const[key,i,m]=a.split('|'),sk=shopStock[key],it=sk&&sk[+i];if(!it)return;const p=Math.round(itemPrice(it)*+m);
+  if(S.gold<p)return;if(S.inv.length>=INV_MAX){toast('Рюкзак полон');return}S.gold-=p;S.inv.push(it);sk.splice(+i,1);Snd.sfx('coin');toast(`Куплено: ${itemName(it)}. Надеть можно в разделе «Герой»`)};
 function townBody(){
   const l=curTown,people=Object.keys(NPCS).filter(k=>NPCS[k].town===l.id);
   const tabs=[['inn','Таверна'],['shop','Торговец'],['smith','Кузница'],['alch','Алхимик'],['board','Доска']];
   if(people.length)tabs.push(['people','Жители'+(people.some(p=>npcMark(p))?' •':'')]);
   let h=`<div class="tabs">${tabs.map(([k,n])=>`<button class="${townTab===k?'on':''}" data-act="tab" data-arg="${k}">${n}</button>`).join('')}</div>`;
   if(townTab==='inn'){
-    const full=S.hp>=maxHp()&&S.en>=maxEn();
+    const full=S.hp>=maxHp();
     h+=`<p class="lore">${l.lore}</p>
-    <div class="row"><div class="t"><b>Отдых у очага</b><small>Полностью восстанавливает здоровье и энергию</small></div><span class="price">${innCost()}</span><button class="btn" data-act="rest" ${full||S.gold<innCost()?'disabled':''}>${full?'Вы бодры':'Отдохнуть'}</button></div>
+    <div class="row"><div class="t"><b>Отдых у очага</b><small>Полностью восстанавливает здоровье</small></div><span class="price">${innCost()}</span><button class="btn" data-act="rest" ${full||S.gold<innCost()?'disabled':''}>${full?'Вы бодры':'Отдохнуть'}</button></div>
     <p class="lore">Трактирщик шепчет: «Цифра над врагом — его уровень. Красная — беги, жёлтая — будь осторожен. А у кого над головой «!» — тому нужна помощь».</p>`;
   }else if(townTab==='shop'){
     h+=`<p class="lore">Товар меняется при каждом твоём приходе. Синие — редкие, фиолетовые — эпические вещи с особыми свойствами.</p>${shopRows(l.id,1)}`;
   }else if(townTab==='smith'){
-    h+=`<p class="lore">Заточка усиливает основные свойства вещи на 8% за уровень, до +5.</p><div class="rows">${SLOTS.map(s=>{const it=S.eq[s];if(!it)return'';const c=Math.round(itemPrice(it)*.4*(it.up+1));
-      return`<div class="row rb${it.rar}"><div class="t">${itemHTML(it)}</div><div class="btns">${it.up>=5?'<span class="tag eq">максимум</span>':`<span class="price">${c}</span><button class="btn sm" data-act="sharpen" data-arg="${s}" ${S.gold<c?'disabled':''}>Заточить</button>`}</div></div>`}).join('')}</div>`;
+    h+=`<p class="lore">Заточка усиливает основные свойства вещи на 8% за уровень, до +5.</p><div class="rows">${EQS.map(s=>{const it=S.eq[s];if(!it)return'';const c=Math.round(itemPrice(it)*.4*(it.up+1));
+      return`<div class="row rb${it.rar}"><img class="ic" src="${spriteURL(itemIcon(it))}" alt="" style="width:34px"><div class="t">${itemHTML(it)}</div><div class="btns">${it.up>=5?'<span class="tag eq">максимум</span>':`<span class="price">${c}</span><button class="btn sm" data-act="sharpen" data-arg="${s}" ${S.gold<c?'disabled':''}>Заточить</button>`}</div></div>`}).join('')}</div>`;
   }else if(townTab==='alch'){
     h+=`<div class="rows">
-    <div class="row"><div class="t"><b>Зелье крови</b><small>Лечит 45% здоровья. У вас: ${S.pots}</small></div><span class="price">15</span><button class="btn" data-act="buyP" ${S.gold<15?'disabled':''}>Купить</button></div>
-    <div class="row"><div class="t"><b>Эликсир сумрака</b><small>Возвращает 60% энергии. У вас: ${S.elix}</small></div><span class="price">22</span><button class="btn" data-act="buyE" ${S.gold<22?'disabled':''}>Купить</button></div></div>
+    <div class="row"><div class="t"><b>Зелье здоровья</b><small>Лечит 40% здоровья. Тратит ход. У вас: ${S.pots}</small></div><span class="price">15</span><button class="btn" data-act="buyP" ${S.gold<15?'disabled':''}>Купить</button></div>
+    <div class="row"><div class="t"><b>Зелье фокуса</b><small>Возвращает 50% фокуса. Тратит ход. У вас: ${S.fpots}</small></div><span class="price">20</span><button class="btn" data-act="buyE" ${S.gold<20?'disabled':''}>Купить</button></div></div>
     <h3>Скупка трофеев</h3><div class="rows">
     <div class="row"><div class="t"><b>Хвост игуаны</b><small>Алхимик варит из них зелья. У вас: ${S.tails||0}</small></div><span class="price">${TAIL_PRICE}</span><button class="btn" data-act="sellT" ${!S.tails?'disabled':''}>Продать</button>${S.tails>1?`<button class="btn ghost" data-act="sellAllT">Все</button>`:''}</div></div>`;
   }else if(townTab==='people'){
@@ -874,10 +1169,10 @@ function townBody(){
   return h+`<button class="btn ghost wide" data-act="close">Выйти из поселения</button>`;
 }
 ACT.tab=k=>{townTab=k};
-ACT.rest=()=>{if(S.gold<innCost())return;S.gold-=innCost();S.hp=maxHp();S.en=maxEn();toast('Вы отдохнули и набрались сил')};
+ACT.rest=()=>{if(S.gold<innCost())return;S.gold-=innCost();S.hp=maxHp();toast('Вы отдохнули и набрались сил')};
 ACT.sharpen=s=>{const it=S.eq[s];if(!it||it.up>=5)return;const c=Math.round(itemPrice(it)*.4*(it.up+1));if(S.gold<c)return;S.gold-=c;it.up++;Snd.sfx('coin');toast(`${itemName(it)} заточен`)};
 ACT.buyP=()=>{if(S.gold<15)return;S.gold-=15;S.pots++;Snd.sfx('coin')};
-ACT.buyE=()=>{if(S.gold<22)return;S.gold-=22;S.elix++;Snd.sfx('coin')};
+ACT.buyE=()=>{if(S.gold<20)return;S.gold-=20;S.fpots++;Snd.sfx('coin')};
 ACT.sellT=()=>{if(!S.tails)return;S.tails--;S.gold+=TAIL_PRICE;Snd.sfx('coin');toast(`Продано: +${TAIL_PRICE} золота`)};
 ACT.sellAllT=()=>{const n=S.tails||0;if(!n)return;S.tails=0;S.gold+=n*TAIL_PRICE;Snd.sfx('coin');toast(`Продано хвостов: ${n}, +${n*TAIL_PRICE} золота`)};
 ACT.takeB=()=>{S.bounty=S.offer;S.offer=null;toast('Заказ принят')};
@@ -890,18 +1185,16 @@ ACT.backTown=()=>{townTab='people';openSheet(curTown.name,townBody);return'nore'
 let npcFrom=false;
 function openNpc(id,fromTown){
   npcFrom=!!fromTown;const n=NPCS[id];
-  if(n.shop&&!shopStock.trader)shopStock.trader=makeStock(0,true);
-  if(n.shop&&!fromTown)shopStock.trader=makeStock(0,true);
+  if(n.shop&&(!shopStock.trader||!fromTown))shopStock.trader=makeStock(0,true);
   openSheet(n.n,()=>npcBody(id));
 }
 function npcBody(id){
   const n=NPCS[id];
   let h=`<div class="row"><img class="ic" src="${spriteURL('npc',n.pal)}" alt=""><div class="t"><p class="lore">«${n.hello}»</p></div></div>`;
-  const qs=Object.keys(QUESTS).filter(q=>QUESTS[q].g===id);
-  for(const q of qs){
-    const Q=QUESTS[q],st=S.q[q];
-    if(st&&st.st==='done'){h+=`<div class="quest done"><b>✓ ${Q.n}</b></div>`;continue}
-    if(st){const pr=qProgress(q),need=qNeed(q),ready=pr>=need;
+  for(const q of Object.keys(QUESTS).filter(q=>QUESTS[q].g===id)){
+    const Q=QUESTS[q],sq=S.q[q];
+    if(sq&&sq.st==='done'){h+=`<div class="quest done"><b>✓ ${Q.n}</b></div>`;continue}
+    if(sq){const pr=qProgress(q),need=qNeed(q),ready=pr>=need;
       h+=`<div class="quest ${ready?'ready':'cur'}"><b>${Q.n}</b><small>${Q.t}</small><small>Прогресс: ${pr} / ${need}${Q.k==='collect'?` (${Q.item})`:''}. Награда: ${rewardText(Q.r)}</small><div class="prog"><i style="width:${pr/need*100}%"></i></div>
        ${ready?`<button class="btn wide" data-act="turnIn" data-arg="${q}">Сдать задание</button>`:''}</div>`;continue}
     if(!qAvail(q))continue;
@@ -916,61 +1209,115 @@ ACT.takeQ=q=>{if(!qAvail(q))return;S.q[q]={st:'active',have:0};toast(`Задан
 ACT.turnIn=q=>{
   if(!qReady(q))return;const Q=QUESTS[q],r=Q.r;S.q[q].st='done';
   if(Q.k==='have')S.tails-=Q.c;
-  if(r.gold)S.gold+=r.gold;if(r.xp)S.xp+=r.xp;if(r.sp)S.sp+=r.sp;if(r.pts)S.pts+=r.pts;if(r.pots)S.pots+=r.pots;if(r.elix)S.elix+=r.elix;
+  if(r.gold)S.gold+=r.gold;if(r.xp)S.xp+=r.xp;if(r.sp)S.tp+=r.sp*2;if(r.pts)S.lvq+=r.pts;if(r.pots)S.pots+=r.pots;if(r.elix)S.fpots+=r.elix;
   let got='';if(r.item){const it=genItem(r.item[0],Math.max(S.lvl,Q.lv)+1,r.item[1]);const m=addItem(it);got=m||` Получено: ${itemName(it)}.`}
   const u=levelUps();Snd.sfx(u?'level':'win');
   toast(`Задание выполнено!${got}${u?' Новый уровень!':''}`);
 };
 
-/* hero */
-let heroTab='stats';
-const STATS=[['str','Сила','атака'],['agi','Ловкость','крит и уклонение'],['vit','Живучесть','здоровье и защита'],['wil','Воля','энергия и магия']];
+/* ---------- hero ---------- */
+let heroTab='stats',treeBr='anger',sel=null;
+const LVB=[{id:'str',n:'+2 Сила',d:'урон оружием',st:'str',v:2},{id:'agi',n:'+2 Ловкость',d:'крит, уклонение, левая рука',st:'agi',v:2},{id:'vit',n:'+2 Живучесть',d:'здоровье и защита',st:'vit',v:2},
+ {id:'wil',n:'+2 Воля',d:'фокус и магия',st:'wil',v:2},{id:'hp',n:'+30 здоровья',bon:'hp',v:30},{id:'fp',n:'+10 фокуса',bon:'fp',v:10},{id:'crit',n:'+2% крита',bon:'crit',v:2},
+ {id:'dodge',n:'+2% уклонения',bon:'dodge',v:2},{id:'def',n:'+2 защиты',bon:'def',v:2},{id:'dmg',n:'+4% урона',bon:'dmg',v:4},{id:'regen',n:'+2 фокуса за ход',bon:'regen',v:2}];
+function ensureOpts(){if(S.lvq>0&&(!S.lvopts||!S.lvopts.length)){S.lvopts=[];while(S.lvopts.length<3){const id=pick(LVB).id;if(!S.lvopts.includes(id))S.lvopts.push(id)}}}
+const STATS=[['str','Сила','урон правой рукой'],['agi','Ловкость','крит, уклонение, левая рука'],['vit','Живучесть','здоровье и защита'],['wil','Воля','фокус и магия']];
+function myAbilities(){const a=[...CLASSES[S.cls].ab];if(S.spec)a.push(...SPECS[S.spec].ab);for(const id of['execute','bite','fear'])if(tr(id))a.push(id);return a}
 function heroBody(){
-  const tabs=[['stats','Персонаж'+(S.pts?' •':'')],['skills','Навыки'+(S.sp?' •':'')],['gear','Снаряжение'],['bag','Сумка']];
+  const pend=(S.lvq?' •':''),tabs=[['stats','Персонаж'+(S.lvq||S.pts||(S.lvl>=10&&!S.spec)?' •':'')],['gear','Снаряжение'],['tree','Кровные линии'+(S.tp?' •':'')],['bag','Сумка']];
   let h=`<div class="tabs">${tabs.map(([k,n])=>`<button class="${heroTab===k?'on':''}" data-act="htab" data-arg="${k}">${n}</button>`).join('')}</div>`;
   if(heroTab==='stats'){
-    h+=`<div class="row"><img class="ic" src="${spriteURL('hero')}" alt=""><div class="t"><b>Охотник, уровень ${S.lvl}</b><small>Опыт ${S.xp} / ${xpNeed(S.lvl)}${S.pts?` · очков характеристик: ${S.pts}`:''}</small></div></div>
-    <div class="stats">${STATS.map(([k,n,d])=>`<div class="stat"><div class="t">${n}<small>${d}</small></div><b>${S[k]}</b>${S.pts?`<button class="plus" data-act="stat" data-arg="${k}" aria-label="Повысить: ${n}">+</button>`:''}</div>`).join('')}</div>
-    <div class="derived"><span>Атака<b>${atk()}</b></span><span>Защита<b>${def()}</b></span><span>Здоровье<b>${maxHp()}</b></span><span>Энергия<b>${maxEn()}</b></span><span>Крит<b>${Math.round(crit())}%</b></span><span>Уклонение<b>${dodge()}%</b></span>
-     ${['vamp','burn','bleed','stun','thorns','regen','gold','xp'].filter(k=>gs(k)).map(k=>`<span>${AFF[k].n}<b>${gs(k)}${AFF[k].u}</b></span>`).join('')}</div>
+    ensureOpts();
+    const L=LINEAGES[S.lin],Cl=CLASSES[S.cls];
+    h+=`<div class="portrait"><div class="pimg"><img src="${spriteURL('hero',heroLook())}" alt=""></div><div><b style="font-size:18px">${esc(S.name)}</b><p class="lore" style="font-size:13px">${L.n} · ${Cl.n}${S.spec?' → '+SPECS[S.spec].n:''}</p><small style="color:var(--muted)">Уровень ${S.lvl} · опыт ${S.xp} / ${xpNeed(S.lvl)}</small></div></div>`;
+    if(S.lvq){h+=`<h3>Дар уровня${S.lvq>1?` (${S.lvq})`:''}</h3><p class="lore">Выбери один из трёх даров.</p><div class="cards">${S.lvopts.map(id=>{const b=LVB.find(x=>x.id===id);return`<button class="card" data-act="lvpick" data-arg="${id}"><b>${b.n}</b>${b.d?`<small>${b.d}</small>`:''}</button>`}).join('')}</div>`}
+    if(S.lvl>=10&&!S.spec){h+=`<h3>Путь крови</h3><p class="lore">Ты достиг 10 уровня. Выбери, кем стать — навсегда.</p><div class="cards">${Cl.specs.map(k=>{const s=SPECS[k];return`<button class="card" data-act="spec" data-arg="${k}"><b>${s.n}</b><small>${s.t}</small><span class="pas">Умения: ${s.ab.map(a=>`${ABIL[a].n} — ${ABIL[a].d}`).join('; ')}</span></button>`}).join('')}</div>`}
+    h+=`<div class="stats">${STATS.map(([k,n,d])=>`<div class="stat"><div class="t">${n}<small>${d}</small></div><b>${st(k)}</b>${S.pts?`<button class="plus" data-act="stat" data-arg="${k}" aria-label="Повысить: ${n}">+</button>`:''}</div>`).join('')}</div>
+    ${S.pts?`<p class="lore">Старые очки характеристик: ${S.pts}</p>`:''}
+    <div class="derived"><span>Правая рука<b>${rangeTxt(atkMain()*dmgMul())}</b></span><span>Левая рука<b>${S.eq.off?rangeTxt(atkOff()*dmgMul()):'—'}</b></span><span>Защита<b>${def()}</b></span><span>Здоровье<b>${maxHp()}</b></span><span>Фокус<b>${maxFp()}</b></span><span>Фокус/ход<b>+${fpRegen()}</b></span><span>Крит<b>${Math.round(crit())}%</b></span><span>Уклонение<b>${dodge()}%</b></span><span>Блок<b>${block()}%</b></span>
+     ${['vamp','burn','bleed','stun','thorns','gold','xp'].filter(k=>gs(k)).map(k=>`<span>${AFF[k].n}<b>${gs(k)}${AFF[k].u}</b></span>`).join('')}</div>
+    <div class="quest"><b>${L.n}</b><small style="color:var(--gold)">${L.b}</small><small style="color:#c8b8ff">${L.p}</small></div>
+    <h3>Умения</h3><div class="rows">${myAbilities().map(a=>`<div class="row"><div class="t"><b>${ABIL[a].n}</b><small>${ABIL[a].d} · ${ABIL[a].fp} фокуса${ABIL[a].cd?` · перезарядка ${ABIL[a].cd}`:''}</small></div></div>`).join('')}</div>
     ${S.trophies.length?`<h3>Трофеи боссов</h3><div class="rows">${S.trophies.map(t=>`<div class="row"><div class="t"><b class="r3">${TROPHY[t].n}</b><small>${TROPHY[t].d}</small></div></div>`).join('')}</div>`:''}`;
-  }else if(heroTab==='skills'){
-    h+=`<p>Очков навыков: <b>${S.sp}</b>. Даётся 1 очко за каждый уровень, ещё — за важные задания. Каждый навык растёт до 5 ранга и на 3 и 5 ранге получает новые эффекты.</p><div class="rows">${SKILLS.map(s=>{const r=rank(s.id),lock=S.lvl<s.lv;
-      let btn;if(lock)btn=`<span class="tag">с ур. ${s.lv}</span>`;else if(r>=5)btn='<span class="tag eq">максимум</span>';else btn=`<button class="btn sm" data-act="learn" data-arg="${s.id}" ${S.sp<1?'disabled':''}>${r?'Улучшить':'Изучить'}</button>`;
-      return`<div class="row" style="${lock?'opacity:.5':''}"><div class="t"><b>${s.n} <span class="pips">${'●'.repeat(r)}${'○'.repeat(5-r)}</span></b><small>${r?SKB[s.id].d(r):'Не изучен'}${s.en?` · ${s.id==='rush'&&r>=4?6:s.en} эн.`:''}</small>${r<5&&!lock?`<span class="lines">Дальше: ${SKB[s.id].d(r+1)}</span>`:''}</div>${btn}</div>`}).join('')}</div>`;
   }else if(heroTab==='gear'){
-    h+=`<h3>Надето</h3><div class="rows">${SLOTS.map(s=>{const it=S.eq[s];return it?`<div class="row rb${it.rar}"><div class="t">${itemHTML(it)}</div><button class="btn ghost sm" data-act="unequip" data-arg="${s}">Снять</button></div>`:`<div class="row"><div class="t"><b style="color:var(--muted)">${SLOT_N[s]}: пусто</b></div></div>`}).join('')}</div>
-    <h3>Рюкзак (${S.inv.length} / ${INV_MAX})</h3>`;
-    if(!S.inv.length)h+='<p class="lore">Пусто. Вещи выпадают из врагов, их дают за задания и продают в поселениях.</p>';
-    else{const list=S.inv.slice().sort((a,b)=>SLOTS.indexOf(a.slot)-SLOTS.indexOf(b.slot)||b.rar-a.rar||power(b)-power(a));
-      h+=`<div class="rows">${list.map(it=>{const d=power(it)-power(S.eq[it.slot]);
-        return`<div class="row rb${it.rar}"><div class="t">${itemHTML(it,d>0?` · <span class="up">▲ лучше</span>`:d<0?` · <span class="down">▼ хуже</span>`:'')}</div><div class="btns"><button class="btn sm" data-act="equip" data-arg="${it.uid}">Надеть</button><button class="btn ghost sm" data-act="sellIt" data-arg="${it.uid}">${sellPrice(it)} зол.</button></div></div>`}).join('')}</div>
-        <button class="btn ghost wide" data-act="sellJunk">Продать все обычные вещи</button>`}
+    const slot=(s)=>{const it=S.eq[s],on=sel&&sel.eq===s;return`<button class="slot ${it?'b'+it.rar:''} ${on?'sel':''}" data-act="selEq" data-arg="${s}" aria-label="${EQ_N[s]}">${it?`<img src="${spriteURL(itemIcon(it))}" alt="">${it.up?`<span class="up">+${it.up}</span>`:''}`:''}<span class="sl">${EQ_N[s]}</span></button>`};
+    h+=`<div class="doll"><div class="dcol">${['main','gloves','boots','ring'].map(slot).join('')}</div>
+      <div class="dmid"><img src="${spriteURL('hero',heroLook())}" alt=""><div class="bars"><span class="bar hp"><i style="width:${S.hp/maxHp()*100}%"></i><span>${S.hp} / ${maxHp()}</span></span><span class="bar en"><i></i><span>Фокус ${maxFp()}</span></span></div>
+      <small style="color:var(--muted);font-size:12px;text-align:center">Урон ${rangeTxt(atkMain()*dmgMul())} · Защита ${def()}</small></div>
+      <div class="dcol">${['helm','armor','off','amulet','ring2'].map(slot).join('')}</div></div>`;
+    h+=itemPanel();
+    const list=S.inv.slice().sort((a,b)=>CATS.indexOf(a.cat)-CATS.indexOf(b.cat)||b.rar-a.rar||power(b)-power(a));
+    h+=`<h3>Рюкзак (${S.inv.length} / ${INV_MAX})</h3>${list.length?`<div class="bag">${list.map(it=>{const d=power(it)-compareTo(it);return`<button class="slot b${it.rar} ${sel&&sel.uid===it.uid?'sel':''}" data-act="selInv" data-arg="${it.uid}" aria-label="${esc(itemName(it))}"><img src="${spriteURL(itemIcon(it))}" alt="">${d>0?'<span class="up">▲</span>':''}</button>`}).join('')}</div>
+      <button class="btn ghost wide" data-act="sellJunk">Продать все обычные вещи</button>`:'<p class="lore">Пусто. Вещи выпадают из врагов, их дают за задания и продают в поселениях.</p>'}`;
+  }else if(heroTab==='tree'){
+    const T0=TREES[treeBr],spent=k=>TREES[k].nodes.reduce((a,n)=>a+tr(n.id),0);
+    h+=`<div class="row"><div class="t"><b>Очки кровных линий: ${S.tp}</b><small>2 очка за уровень и ещё за важные задания. Ярусы открываются, когда в ветку вложено 5, 10 и 15 очков.</small></div></div>
+    <div class="branches">${Object.keys(TREES).map(k=>`<button class="${treeBr===k?'on':''}" data-act="br" data-arg="${k}"><b>${TREES[k].n}</b>${spent(k)} очк.</button>`).join('')}</div>
+    <p class="lore">${T0.d}</p>`;
+    const sp=spent(treeBr);
+    for(let t=0;t<4;t++){const lock=sp<TIER_NEED[t];
+      h+=`<div class="tier ${lock?'lock':''}"><h4>Ярус ${['I','II','III','IV'][t]}${t?` · нужно ${TIER_NEED[t]} очков в ветке`:''}</h4>${T0.nodes.filter(n=>n.t===t).map(n=>{const r=tr(n.id);
+        return`<div class="node ${r?'has':''} ${n.act?'act':''}"><span class="rk">${r}/${n.max}</span><div class="t"><b>${n.n}${n.act?' (умение)':''}</b><small>${r?n.d(r):'Не изучено'}${r<n.max?`<br>Дальше: ${n.d(r+1)}`:''}</small></div>${r<n.max?`<button class="plus" data-act="learn" data-arg="${n.id}" ${lock||S.tp<1?'disabled':''} aria-label="Вложить очко: ${n.n}">+</button>`:''}</div>`}).join('')}</div>`}
+    const cost=50+S.lvl*15,any=Object.values(S.tree).some(v=>v>0);
+    h+=`<button class="btn ghost wide" data-act="resetTree" ${!any||S.gold<cost?'disabled':''}>Сбросить все линии — ${cost} золота</button>`;
   }else{
     h+=`<div class="rows">
-     <div class="row"><div class="t"><b>Зелье крови × ${S.pots}</b><small>Лечит 45% здоровья</small></div><button class="btn" data-act="usePot" ${!S.pots||S.hp>=maxHp()?'disabled':''}>Выпить</button></div>
-     <div class="row"><div class="t"><b>Эликсир сумрака × ${S.elix}</b><small>Возвращает 60% энергии</small></div><button class="btn" data-act="useElix" ${!S.elix||S.en>=maxEn()?'disabled':''}>Выпить</button></div>
+     <div class="row"><div class="t"><b>Зелье здоровья × ${S.pots}</b><small>Лечит 40% здоровья</small></div><button class="btn" data-act="usePot" ${!S.pots||S.hp>=maxHp()?'disabled':''}>Выпить</button></div>
+     <div class="row"><div class="t"><b>Зелье фокуса × ${S.fpots}</b><small>Пьётся только в бою: возвращает 50% фокуса</small></div></div>
      ${S.tails?`<div class="row"><div class="t"><b>Хвост игуаны × ${S.tails}</b><small>Трофей. Продаётся алхимику по ${TAIL_PRICE} золота, нужен травнице Ольхе</small></div></div>`:''}
      ${Object.keys(S.q).filter(q=>QUESTS[q].k==='collect'&&S.q[q].st==='active').map(q=>`<div class="row"><div class="t"><b>${QUESTS[q].item} × ${S.q[q].have}</b><small>Для задания «${QUESTS[q].n}»</small></div></div>`).join('')}</div>`;
   }
   return h;
 }
-ACT.htab=k=>{heroTab=k;const b=ov.querySelector('.sheet-body');if(b)b.scrollTop=0};
-ACT.stat=k=>{if(!S.pts)return;S.pts--;S[k]++;if(k==='vit')S.hp+=10;if(k==='wil')S.en+=4};
-ACT.learn=id=>{const s=SKB[id];if(S.sp<1||S.lvl<s.lv||rank(id)>=5)return;S.sp--;S.skills[id]=rank(id)+1;Snd.sfx('level')};
-ACT.equip=u=>{const i=S.inv.findIndex(it=>it.uid===+u);if(i<0)return;const it=S.inv[i];S.inv.splice(i,1);const old=S.eq[it.slot];if(old)S.inv.push(old);S.eq[it.slot]=it;S.hp=Math.min(S.hp,maxHp())};
-ACT.unequip=s=>{const it=S.eq[s];if(!it)return;if(S.inv.length>=INV_MAX){toast('Рюкзак полон');return}S.inv.push(it);S.eq[s]=null;S.hp=Math.min(S.hp,maxHp());S.en=Math.min(S.en,maxEn())};
-ACT.sellIt=u=>{const i=S.inv.findIndex(it=>it.uid===+u);if(i<0)return;const g=sellPrice(S.inv[i]);S.gold+=g;S.inv.splice(i,1);Snd.sfx('coin')};
-ACT.sellJunk=()=>{let g=0;S.inv=S.inv.filter(it=>{if(it.rar===0){g+=sellPrice(it);return false}return true});if(g){S.gold+=g;Snd.sfx('coin');toast(`Продано на ${g} золота`)}};
-ACT.usePot=()=>{if(!S.pots)return;S.pots--;S.hp=Math.min(maxHp(),S.hp+Math.round(maxHp()*.45))};
-ACT.useElix=()=>{if(!S.elix)return;S.elix--;S.en=Math.min(maxEn(),S.en+Math.round(maxEn()*.6))};
+function selItem(){if(!sel)return null;if(sel.eq)return S.eq[sel.eq];return S.inv.find(i=>i.uid===sel.uid)||null}
+function itemPanel(){
+  const it=selItem();if(!it)return`<p class="lore" style="font-size:13px">Нажми на вещь, чтобы увидеть её свойства.</p>`;
+  let btns='';
+  if(sel.eq)btns=`<button class="btn ghost sm" data-act="unequip" data-arg="${sel.eq}">Снять</button>`;
+  else{
+    if(it.cat==='weapon'&&!isTwo(it))btns=`<button class="btn sm" data-act="equip" data-arg="${it.uid}|main">В правую руку</button><button class="btn sm" data-act="equip" data-arg="${it.uid}|off">В левую руку</button>`;
+    else btns=`<button class="btn sm" data-act="equip" data-arg="${it.uid}|">Надеть</button>`;
+    btns+=`<button class="btn ghost sm" data-act="sellIt" data-arg="${it.uid}">Продать за ${sellPrice(it)}</button>`;
+  }
+  let wk='';if(it.cat==='weapon'){const w=WT[itemBase(it).wt];wk=`<span class="lines">Приёмы: ${w.sk.map(s=>`${s.n} (${s.fp} фокуса)`).join(', ')}</span>`}
+  if(it.cat==='shield')wk=`<span class="lines">Приёмы: ${WT.shield.sk.map(s=>`${s.n} (${s.fp} фокуса)`).join(', ')}</span>`;
+  const d=sel.eq?0:power(it)-compareTo(it);
+  return`<div class="ipanel"><div style="display:flex;gap:10px;align-items:center"><img src="${spriteURL(itemIcon(it))}" alt="" style="width:44px;image-rendering:pixelated"><div class="t" style="display:grid;gap:2px">${itemHTML(it,d>0?` · <span class="up">▲ лучше надетого</span>`:d<0?` · <span class="down">▼ хуже надетого</span>`:'')}${wk}</div></div><div class="btnrow">${btns}</div></div>`;
+}
+ACT.htab=k=>{heroTab=k;sel=null;const b=ov.querySelector('.sheet-body');if(b)b.scrollTop=0};
+ACT.br=k=>{treeBr=k};
+ACT.selEq=s=>{sel=S.eq[s]?{eq:s}:null};
+ACT.selInv=u=>{sel={uid:+u}};
+ACT.lvpick=id=>{const b=LVB.find(x=>x.id===id);if(!S.lvq||!S.lvopts||!S.lvopts.includes(id))return;if(b.st)S[b.st]+=b.v;else S.bon[b.bon]=(S.bon[b.bon]||0)+b.v;S.lvq--;S.lvopts=null;ensureOpts();S.hp=Math.min(maxHp(),S.hp+(b.id==='hp'?30:b.id==='vit'?20:0));Snd.sfx('level')};
+ACT.spec=k=>{if(S.spec||S.lvl<10||!CLASSES[S.cls].specs.includes(k))return;S.spec=k;Snd.sfx('level');toast(`Ты стал: ${SPECS[k].n}`)};
+ACT.stat=k=>{if(!S.pts)return;S.pts--;S[k]++;if(k==='vit')S.hp+=10};
+ACT.learn=id=>{const n=NODE[id];if(!n||S.tp<1)return;const spent=TREES[n.br].nodes.reduce((a,x)=>a+tr(x.id),0);if(spent<TIER_NEED[n.t]||tr(id)>=n.max)return;S.tp--;S.tree[id]=tr(id)+1;Snd.sfx('level')};
+ACT.resetTree=()=>{const cost=50+S.lvl*15;if(S.gold<cost)return;S.gold-=cost;const sum=Object.values(S.tree).reduce((a,v)=>a+v,0);S.tp+=sum;S.tree={};toast('Линии сброшены')};
+ACT.equip=a=>{
+  const[u,hand]=a.split('|'),i=S.inv.findIndex(x=>x.uid===+u);if(i<0)return;const it=S.inv[i];
+  let slot;
+  if(it.cat==='weapon')slot=isTwo(it)?'main':(hand||'main');
+  else if(it.cat==='shield')slot='off';
+  else if(it.cat==='ring')slot=!S.eq.ring?'ring':!S.eq.ring2?'ring2':'ring';
+  else slot=it.cat;
+  if(slot==='off'&&isTwo(S.eq.main)){if(S.inv.length>=INV_MAX){toast('Рюкзак полон');return}S.inv.push(S.eq.main);S.eq.main=null}
+  S.inv.splice(i,1);
+  if(S.eq[slot])S.inv.push(S.eq[slot]);
+  S.eq[slot]=it;
+  if(slot==='main'&&isTwo(it)&&S.eq.off){S.inv.push(S.eq.off);S.eq.off=null}
+  sel={eq:slot};S.hp=Math.min(S.hp,maxHp());Snd.sfx('coin');
+};
+ACT.unequip=s=>{const it=S.eq[s];if(!it)return;if(S.inv.length>=INV_MAX){toast('Рюкзак полон');return}S.inv.push(it);S.eq[s]=null;sel=null;S.hp=Math.min(S.hp,maxHp())};
+ACT.sellIt=u=>{const i=S.inv.findIndex(it=>it.uid===+u);if(i<0)return;const g=sellPrice(S.inv[i]);S.gold+=g;S.inv.splice(i,1);sel=null;Snd.sfx('coin')};
+ACT.sellJunk=()=>{let g=0;S.inv=S.inv.filter(it=>{if(it.rar===0){g+=sellPrice(it);return false}return true});sel=null;if(g){S.gold+=g;Snd.sfx('coin');toast(`Продано на ${g} золота`)}};
+ACT.usePot=()=>{if(!S.pots)return;S.pots--;S.hp=Math.min(maxHp(),S.hp+Math.round(maxHp()*.4*(1+.15*tr('alchemy'))))};
 
 /* quests sheet */
 function questBody(){
   const active=Object.keys(S.q).filter(q=>S.q[q].st==='active');
   const b=S.bounty;
-  return`<p class="lore">Сто ночей луна не заходит над Долиной Пепла. Князь Ноктюрн пьёт свет из неба, а его слуги стерегут земли. Победи пятерых слуг, чтобы снять печать с его замка.</p>
-  <h3>Главный путь</h3>${BOSS_ORDER.map(([id,loc])=>{const B=BOSS[id],L=LOCS.find(l=>l.id===loc);return`<div class="quest ${S.bosses[id]?'done':''}"><b>${S.bosses[id]?'✓ ':''}${B.n}</b><small>${L.name}. Рекомендуемый уровень: ${B.lvl}.${id==='prince'?' Замок откроется после победы над пятью слугами.':''}</small></div>`}).join('')}
+  return`<p class="lore">Сто ночей луна не заходит над Долиной Пепла. Победи пятерых слуг Князя, чтобы снять печать с его замка.</p>
+  <h3>Главный путь</h3>${BOSS_ORDER.map(([id,loc])=>{const Bo=BOSS[id],L=LOCS.find(l=>l.id===loc);return`<div class="quest ${S.bosses[id]?'done':''}"><b>${S.bosses[id]?'✓ ':''}${Bo.n}</b><small>${L.name}. Рекомендуемый уровень: ${Bo.lvl}.${id==='prince'?' Замок откроется после победы над пятью слугами.':''}</small></div>`}).join('')}
   <h3>Задания</h3>${active.length?active.map(q=>{const Q=QUESTS[q],pr=qProgress(q),need=qNeed(q),ready=pr>=need;
     return`<div class="quest ${ready?'ready':'cur'}"><b>${Q.n}</b><small>${ready?`Готово! Вернись к: ${NPCS[Q.g].n}`:Q.t}</small><small>Прогресс: ${pr} / ${need}</small><div class="prog"><i style="width:${pr/need*100}%"></i></div></div>`}).join('')
     :'<p class="lore">Нет активных заданий. Ищи людей со знаком «!» над головой на карте и в поселениях (вкладка «Жители»).</p>'}
@@ -1000,7 +1347,7 @@ function drawMini(){
 let confirmNew=false;
 function menuBody(){
   return`<p>Нажмите на клетку карты, чтобы идти туда. Враги ходят вместе с вами: если их отряд окажется на вашей клетке, начнётся бой. Люди со знаком «!» дают задания, «?» — ждут отчёта.</p>
-  <p>Игра сохраняется сама — после каждого боя, в поселениях и в пути.</p>
+  <p>В бою удар оружием бесплатен, приёмы и умения тратят фокус. Каждые три хода наступает комбо-ход — несколько действий подряд. Зелья тоже тратят ход.</p>
   <div class="rows">
    <div class="row" style="flex-wrap:wrap"><div class="t"><b>Музыка</b><small>Своя тема для странствий, поселений, боёв и боссов</small></div><button class="btn${Snd.prefs.music?'':' ghost'}" data-act="tglMusic">${Snd.prefs.music?'Вкл':'Выкл'}</button>
     <label class="vol" style="flex-basis:100%">Громкость<input type="range" id="vol-music" min="0" max="100" step="5" value="${Snd.prefs.mvol}" data-vol="music" aria-label="Громкость музыки"><output>${Snd.prefs.mvol}%</output></label></div>
@@ -1014,118 +1361,174 @@ function menuBody(){
   <button class="btn wide" data-act="close">Продолжить</button>`;
 }
 ACT.tglMusic=()=>{Snd.toggle('music');updMusicBtn()};ACT.tglSfx=()=>Snd.toggle('sfx');
-ov.addEventListener('input',e=>{const r=e.target.closest('[data-vol]');if(!r)return;Snd.setVol(r.dataset.vol,+r.value);const out=r.parentElement.querySelector('output');if(out)out.textContent=r.value+'%'});
 function updMusicBtn(){const b=$('#nMusic'),on=Snd.prefs.music;b.classList.toggle('off',!on);b.setAttribute('aria-label',on?'Выключить музыку':'Включить музыку')}
 $('#nMusic').onclick=()=>{const on=Snd.toggle('music');updMusicBtn();toast(on?'Музыка включена. Громкость — в «Меню»':'Музыка выключена')};
 ACT.askReset=()=>{confirmNew=true};ACT.noReset=()=>{confirmNew=false};
 ACT.reset=()=>{confirmNew=false;closeSheet();try{localStorage.removeItem(SAVE_KEY)}catch(e){}boot(null);return'nore'};
-$('#nHero').onclick=()=>{if(!busy()){heroTab='stats';openSheet('Герой',heroBody)}};
+$('#nHero').onclick=()=>{if(!busy()){heroTab='stats';sel=null;openSheet('Герой',heroBody)}};
 $('#nQuest').onclick=()=>{if(!busy())openSheet('Задания',questBody)};
 $('#nMap').onclick=()=>{if(!busy())openSheet('Карта долины',mapBody,{after:drawMini})};
 $('#nMenu').onclick=()=>{if(!busy()){confirmNew=false;openSheet('Пепельная Луна',menuBody)}};
 
 /* ---------- combat ---------- */
-let C=null;
-const cEl=$('#combat');
+const cEl=$('#combat'),TAIL_PRICE=30;
 function fightGroup(g){startCombat(g.types.map(t=>mkEnemy(t,g.L)),{group:g.uid,title:g.types.length>1?'Засада':'Схватка'})}
 function startCombat(foes,o){
   path=[];
-  C={foes,tgt:0,log:[],busy:false,guard:null,cry:null,pois:null,group:o.group||null,boss:o.boss||null,turn:1,tails:0,qmsg:[]};
-  $('#cTitle').textContent=o.title;
-  $('#foes').innerHTML=foes.map((f,i)=>`<button type="button" class="foe${f.boss?' boss':''}" data-i="${i}" data-sp="${f.sp}"><span class="lv">ур. ${f.lvl}</span><img src="${spriteURL(f.sp,f.pal)}" alt=""><span class="fn">${f.n}</span><span class="bar hp"><i></i></span><span class="hpt"></span><span class="sts"></span></button>`).join('');
-  $('#cHeroImg').src=spriteURL('hero');
-  const util=[{id:'pot',n:'Зелье'},{id:'elix',n:'Эликсир'},{id:'flee',n:'Отступить'}];
-  $('#skills').innerHTML=SKILLS.map(s=>`<button type="button" class="sk ${s.id==='guard'||s.id==='cry'?'':'atk'}" data-s="${s.id}">${s.n}<small></small></button>`).join('')+util.map(u=>`<button type="button" class="sk util" data-s="${u.id}">${u.n}<small></small></button>`).join('');
+  const fp0=Math.min(maxFp(),Math.round(maxFp()*.4)+10*tr('startfp'));
+  const bio=biomeMap[S.y*W+S.x],l=locAt[S.y*W+S.x];
+  C={foes,tgt:0,log:[],busy:false,boss:o.boss||null,group:o.group||null,turn:1,moons:0,combo:false,acts:0,fp:fp0,cd:{},pb:{},tails:0,tab:'weap',
+     firstFree:lin('mirel'),firstHit:tr('ambush')>0,undying:tr('undying')>0,fleeFail:false};
+  $('#scene').className='scene '+(o.boss?'boss':bio===1?'snow':bio===2?'swamp':l&&l.type==='town'?'town':'');
+  $('#cName').textContent=S.name;
+  $('#cHeroImg').src=spriteURL('hero',heroLook());
+  $('#foes').innerHTML=foes.map((f,i)=>`<button type="button" class="foe${f.boss?' boss':''}" data-i="${i}" data-sp="${f.sp}"><span class="sts"></span><img src="${spriteURL(f.sp,f.pal)}" alt=""><span class="bar hp"><i></i></span><span class="fn">${f.n} · ${f.lvl}</span></button>`).join('');
   cEl.hidden=false;
   clog(foes.length>1?`На вас напали: ${foes.map(f=>f.n).join(', ')}`:`${foes[0].n} преграждает путь`);
   updCombat();
 }
 $('#foes').addEventListener('click',e=>{const b=e.target.closest('.foe');if(!b||!C)return;const i=+b.dataset.i;if(C.foes[i].hp>0){C.tgt=i;updCombat()}});
-$('#skills').addEventListener('click',e=>{const b=e.target.closest('.sk');if(b&&!b.disabled)act(b.dataset.s)});
-function clog(m){C.log.push(m);if(C.log.length>4)C.log.shift();$('#clog').innerHTML=C.log.map(l=>`<div>${l}</div>`).join('')}
-function stsHTML(st){const o=[];if(!st)return'';
-  if(st.bleed)o.push(`<i>кровь ${st.bleed.t}</i>`);if(st.burn)o.push(`<i class="burn">огонь ${st.burn.t}</i>`);if(st.stun)o.push('<i class="stun">оглушён</i>');if(st.weak)o.push(`<i class="weak">слабость ${st.weak}</i>`);return o.join('')}
+$('#cpanel').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b||b.disabled||!C)return;
+  if(b.dataset.c==='tab'){C.tab=b.dataset.a;updCombat();return}
+  act(b.dataset.c,b.dataset.a)});
+function clog(m){if(!C)return;C.log.push(m);if(C.log.length>3)C.log.shift();$('#clog').innerHTML=C.log.map(l=>`<div>${l}</div>`).join('')}
+function banner(t){const b=$('#banner');b.textContent=t;b.classList.remove('on');void b.offsetWidth;b.classList.add('on')}
+function stsHTML(s){const o=[];if(!s)return'';
+  if(s.bleed)o.push(`<i>кровь ${s.bleed.t}</i>`);if(s.burn)o.push(`<i class="burn">огонь ${s.burn.t}</i>`);if(s.pois)o.push(`<i class="pois">яд ${s.pois.t}</i>`);
+  if(s.stun)o.push('<i class="stun">оглушён</i>');if(s.weak)o.push(`<i class="weak">слаб ${s.weak}</i>`);if(s.mark)o.push(`<i class="buff">метка ${s.mark}</i>`);if(s.sunder)o.push(`<i class="weak">броня− ${s.sunder}</i>`);return o.join('')}
+const fpCost=base=>C.firstFree?0:Math.round(base*(1-.08*tr('cold')));
+const alive=()=>C.foes.filter(f=>f.hp>0);
 function updCombat(){
   if(!C)return;
-  $('#cTurn').textContent='Ход '+C.turn;
+  const t=C.foes[C.tgt]&&C.foes[C.tgt].hp>0?C.foes[C.tgt]:alive()[0];
+  $('#cTurn').textContent=C.combo?'КОМБО':'Ход '+C.turn;
+  const need=tr('rhythm')?2:3;
+  $('#moons').innerHTML=Array.from({length:need},(_,i)=>`<i class="moon ${C.combo||i<C.moons?'f':''}"></i>`).join('');
   document.querySelectorAll('.foe').forEach((el,i)=>{const f=C.foes[i];
-    el.classList.toggle('sel',i===C.tgt&&f.hp>0);el.classList.toggle('dead',f.hp<=0);
-    el.querySelector('i').style.width=(f.hp/f.max*100)+'%';el.querySelector('.hpt').textContent=`${f.hp} / ${f.max}`;
-    el.querySelector('.sts').innerHTML=f.hp>0?stsHTML(f.st):''});
-  S.hp=Math.min(S.hp,maxHp());S.en=Math.min(S.en,maxEn());
+    el.classList.toggle('sel',f===t);el.classList.toggle('dead',f.hp<=0);
+    el.querySelector('i').style.width=(f.hp/f.max*100)+'%';el.querySelector('.sts').innerHTML=f.hp>0?stsHTML(f.st):''});
+  if(t){$('#tName').textContent=`${t.n} · ${t.lvl}`;$('#tHp').style.width=(t.hp/t.max*100)+'%';$('#tHpT').textContent=`${t.hp} / ${t.max}`;$('#tSts').innerHTML=stsHTML(t.st)}
+  S.hp=Math.min(S.hp,maxHp());C.fp=clamp(C.fp,0,maxFp());
   $('#cHp').style.width=(S.hp/maxHp()*100)+'%';$('#cHpT').textContent=`${S.hp} / ${maxHp()}`;
-  $('#cEn').style.width=(S.en/maxEn()*100)+'%';$('#cEnT').textContent=`${S.en} / ${maxEn()}`;
-  const hs=[];if(C.pois)hs.push(`<i class="pois">яд ${C.pois.t}</i>`);if(C.cry)hs.push(`<i class="buff">клич ${C.cry.t}</i>`);if(C.guard)hs.push('<i class="stun">защита</i>');
+  $('#cEn').style.width=(C.fp/maxFp()*100)+'%';$('#cEnT').textContent=`${C.fp} / ${maxFp()} FP`;
+  const pb=C.pb,hs=[];
+  if(C.pois)hs.push(`<i class="pois">яд ${C.pois.t}</i>`);if(pb.cry)hs.push(`<i class="buff">клич ${pb.cry}</i>`);if(pb.frenzy)hs.push(`<i class="buff">безумие ${pb.frenzy}</i>`);
+  if(pb.wall)hs.push(`<i class="stun">стена ${pb.wall}</i>`);if(pb.smoke)hs.push(`<i class="stun">дым ${pb.smoke}</i>`);if(pb.stance)hs.push('<i class="stun">стойка</i>');if(pb.parry)hs.push('<i class="stun">парирование</i>');
+  if(pb.retri)hs.push(`<i class="buff">возмездие ${pb.retri}</i>`);if(pb.venom)hs.push(`<i class="pois">яд на клинке ${pb.venom}</i>`);if(pb.regen)hs.push(`<i class="buff">реген ${pb.regen}</i>`);
   $('#cHeroSts').innerHTML=hs.join('');
-  document.querySelectorAll('.sk').forEach(b=>{const id=b.dataset.s,s=SKB[id],sm=b.querySelector('small');
-    let dis=C.busy;
-    if(s){const r=rank(id);if(!r){dis=true;sm.textContent=S.lvl<s.lv?'с ур. '+s.lv:'изучите';}else{const c=skCost(id);sm.textContent=(c?c+' эн.':'—')+' · '+r;if(S.en<c)dis=true}}
-    else if(id==='pot'){sm.textContent='× '+S.pots;if(!S.pots)dis=true}
-    else if(id==='elix'){sm.textContent='× '+S.elix;if(!S.elix)dis=true}
-    else if(id==='flee'){sm.textContent=C.boss?'нельзя':Math.min(95,45+S.agi*2)+'%';if(C.boss)dis=true}
-    b.disabled=dis});
+  $('#cpanel').innerHTML=panelHTML();
 }
-function floatOn(el,txt,cls){if(!el)return;const s=document.createElement('span');s.className='fl '+cls;s.textContent=txt;el.appendChild(s);setTimeout(()=>s.remove(),900)}
+function cbtn(c,a,label,cost,dis,cls=''){return`<button type="button" class="cbtn ${cls}" data-c="${c}" data-a="${a}" ${dis?'disabled':''}>${label}${cost!=null?`<small>${cost?cost+' FP':'—'}</small>`:''}</button>`}
+function handHTML(hand){
+  const it=hand==='main'?S.eq.main:S.eq.off,dis=C.busy,title=hand==='main'?'Правая':'Левая';
+  if(hand==='off'&&isTwo(S.eq.main))return`<div class="hand"><div class="hh"><div><b>${title}</b><span style="color:var(--muted)">занята двуручным</span></div></div></div>`;
+  if(!it&&hand==='off')return`<div class="hand"><div class="hh"><div><b>${title}</b><span style="color:var(--muted)">пусто</span></div></div></div>`;
+  const w=it?(it.cat==='shield'?WT.shield:WT[itemBase(it).wt]):null;
+  const dmg=w&&w.dt==='magic'?`магия ${magPow(18,4)}`:rangeTxt((hand==='main'?atkMain():atkOff())*dmgMul());
+  let btns=hand==='main'?cbtn('atk','','Удар',0,dis):'';
+  if(w)w.sk.forEach((s,i)=>{const c=fpCost(s.fp);btns+=cbtn('wsk',hand+'|'+i,s.n,c,dis||C.fp<c)});
+  return`<div class="hand"><div class="hh">${it?`<img src="${spriteURL(itemIcon(it))}" alt="">`:''}<div><b>${title}</b><span class="r${it?it.rar:0}">${it?esc(itemName(it)):'Кулаки'}</span><span>${dmg} урона</span></div></div><div class="hbtns">${btns}</div></div>`;
+}
+function panelHTML(){
+  const dis=C.busy;
+  let h=`<div class="ctabs"><button class="${C.tab==='weap'?'on':''}" data-c="tab" data-a="weap">Оружие</button><button class="${C.tab==='abil'?'on':''}" data-c="tab" data-a="abil">Умения</button>${C.combo?`<span class="combo">Комбо-ход · действий ${C.acts}</span>`:''}</div>`;
+  if(C.tab==='weap'){
+    h+=`<div class="hands">${handHTML('main')}${handHTML('off')}</div>`;
+  }else{
+    const ab=myAbilities();
+    h+=ab.length?`<div class="abgrid">${ab.map(id=>{const A=ABIL[id],c=fpCost(A.fp),cd=C.cd[id]||0;return cbtn('ab',id,A.n+(cd?` (${cd})`:''),c,dis||cd>0||C.fp<c)}).join('')}</div>`:'<div class="empty">Нет умений</div>';
+  }
+  const dual=S.eq.off&&S.eq.off.cat==='weapon'&&!isTwo(S.eq.main),dc=fpCost(20);
+  h+=`<div class="crow">${cbtn('hp','',`<span style="color:#ff8a9a">Зелье HP</span> ×${S.pots}`,null,dis||!S.pots,'alt')}${cbtn('fpp','',`<span style="color:#9db4ff">Зелье FP</span> ×${S.fpots}`,null,dis||!S.fpots,'alt')}
+   ${dual?cbtn('dual','','Двойной удар',dc,dis||C.fp<dc):cbtn('skip','','Пропустить',null,dis||C.combo,'alt')}
+   ${C.combo?cbtn('endc','','Завершить',null,dis,'red'):cbtn('flee','',C.boss?'Нельзя бежать':`Бежать ${fleeCh()}%`,null,dis||!!C.boss,'red')}</div>`;
+  return h;
+}
+const fleeCh=()=>Math.min(95,45+st('agi')*2+(tr('escape')?25:0));
+function floatOn(el,txt,cls){if(!el)return;const s=document.createElement('span');s.className='fl '+cls;s.textContent=txt;el.appendChild(s);setTimeout(()=>s.remove(),950)}
 function shakeEl(el){if(!el)return;el.classList.remove('hit');void el.offsetWidth;el.classList.add('hit')}
 const foeEl=f=>document.querySelector(`.foe[data-i="${C.foes.indexOf(f)}"]`);
-function heal(n,quiet){if(n<=0)return;if(!quiet)Snd.sfx('heal');const before=S.hp;S.hp=Math.min(maxHp(),S.hp+n);if(S.hp>before)floatOn($('#cHero'),'+'+(S.hp-before),'heal')}
-function addSt(f,k,t,d){if(f.hp<=0)return;if(k==='stun'||k==='weak'){f.st[k]=Math.max(f.st[k]||0,t)}else{const c=f.st[k];f.st[k]={t:Math.max(t,c?c.t:0),d:Math.max(d||1,c?c.d:0)}}}
-const patk=()=>atk()*(C&&C.cry?1+C.cry.p:1);
-function procs(f,d){
-  const v=gs('vamp');if(v)heal(Math.round(d*v/100),true);
-  if(f.hp<=0)return;
-  if(Math.random()*100<gs('bleed'))addSt(f,'bleed',3,Math.round(atk()*.25));
-  if(Math.random()*100<gs('burn'))addSt(f,'burn',3,Math.round(atk()*.3));
-  if(Math.random()*100<gs('stun'))addSt(f,'stun',1);
+function heal(n,quiet){n=Math.round(n*(lin('osvet')?1.1:1));if(n<=0)return;if(!quiet)Snd.sfx('heal');const before=S.hp;S.hp=Math.min(maxHp(),S.hp+n);if(S.hp>before)floatOn($('#cHero'),'+'+(S.hp-before),'heal')}
+function addSt(f,k,t,d){if(f.hp<=0)return;if(['stun','weak','mark','sunder'].includes(k)){f.st[k]=Math.max(f.st[k]||0,t)}else{const c=f.st[k];f.st[k]={t:Math.max(t,c?c.t:0),d:Math.max(d||1,c?c.d:0)}}}
+function buff(k,t){C.pb[k]=Math.max(C.pb[k]||0,t)}
+function outMul(f){
+  let m=dmgMul();
+  if(C.pb.cry)m*=1.3;if(C.pb.frenzy)m*=1.5;
+  if(lin('valdrak')&&S.hp<maxHp()*.3)m*=1.25;
+  if(lin('korvus')&&BEASTS.includes(f.type))m*=1.2;
+  if(f.boss)m*=1+.1*tr('slayer');
+  m*=1+.02*tr('battle')*Math.min(5,C.turn-1);
+  if(f.st.mark)m*=1.25;if(f.st.stun&&tr('dominate'))m*=1.3;
+  return m;
 }
-function hitFoe(f,mult,name){
-  if(f.hp<=0)return 0;
-  const el=foeEl(f);
+function hitFoe(f,mult,name,o={}){
+  if(!f||f.hp<=0)return 0;
+  const el=foeEl(f),hand=o.hand||'main';
   if(Math.random()*100<f.dg){floatOn(el,'промах','miss');Snd.sfx('miss');if(name)clog(`${name}: ${f.n} уклоняется`);return 0}
-  let d=patk()*mult*rnd(.9,1.1);const cr=Math.random()*100<crit();if(cr)d*=1.75;
-  d=Math.max(1,Math.round(d-f.def));f.hp=Math.max(0,f.hp-d);Snd.sfx(cr?'crit':'hit');
-  floatOn(el,cr?d+'!':'-'+d,cr?'crit':'dmg');shakeEl(el);
-  if(name)clog(`${name}: ${d}${cr?' (крит)':''} по цели ${f.n}`);
-  tailCheck(f);procs(f,d);
-  if(f.hp<=0)clog(`${f.n} повержен`);
+  const base=hand==='off'?atkOff():atkMain(),dt=o.dt||dtOf(hand);
+  let d=base*mult*rnd(.88,1.12)*outMul(f);
+  const cr=Math.random()*100<crit()+(o.crit||0)||C.pb.ambush||C.firstHit;C.pb.ambush=0;C.firstHit=false;
+  if(cr)d*=1.75+.1*tr('heavy');
+  let df=f.def*(f.st.sunder?.5:1);if(dt==='pierce'||o.pen)df*=.6;
+  d=Math.max(1,Math.round(d-df));f.hp=Math.max(0,f.hp-d);Snd.sfx(cr?'crit':'hit');
+  floatOn(el,cr?d+'!':'-'+d,cr?'crit':'dmg');shakeEl(el);lunge();
+  if(name)clog(`${name}: ${d}${cr?' (крит)':''} → ${f.n}`);
+  tailCheck(f);
+  if(f.hp>0){
+    if(Math.random()*100<gs('bleed')+6*tr('bleedn')+(dt==='slash'?8:0)+(o.bleed?100:0))addSt(f,'bleed',3,Math.round(base*.25+2));
+    if(Math.random()*100<gs('stun')+4*tr('daze')+(dt==='blunt'?6:0)+(o.stun||0))addSt(f,'stun',1);
+    if(Math.random()*100<6*tr('venom')+(C.pb.venom?100:0)+(o.pois?100:0))addSt(f,'pois',3,Math.round(base*.2+3));
+    if(Math.random()*100<gs('burn'))addSt(f,'burn',3,Math.round(base*.3));
+    if(o.sunder)addSt(f,'sunder',3);
+  }
+  if(C.pb.venom&&--C.pb.venom<=0)delete C.pb.venom;
+  const v=gs('vamp');if(v)heal(d*v/100,true);
+  if(f.hp<=0)foeDied(f);
   return d;
 }
-function magic(f,base,name){
-  if(f.hp<=0)return 0;
-  const d=Math.round(base*rnd(.9,1.1)*(C.cry?1+C.cry.p/2:1));f.hp=Math.max(0,f.hp-d);const el=foeEl(f);floatOn(el,'-'+d,'crit');shakeEl(el);Snd.sfx('crit');
-  if(name)clog(`${name}: ${d} по цели ${f.n}`);tailCheck(f);if(f.hp<=0)clog(`${f.n} повержен`);return d;
+function magic(f,pow,name){
+  if(!f||f.hp<=0)return 0;
+  const cr=Math.random()*100<crit()/2;
+  const d=Math.max(1,Math.round(pow*rnd(.9,1.1)*(f.st.mark?1.25:1)*(f.st.stun&&tr('dominate')?1.3:1)*(cr?1.5:1)));
+  f.hp=Math.max(0,f.hp-d);const el=foeEl(f);floatOn(el,cr?d+'!':'-'+d,'crit');shakeEl(el);Snd.sfx('crit');
+  if(name)clog(`${name}: ${d} → ${f.n}`);tailCheck(f);if(f.hp<=0)foeDied(f);return d;
 }
-const TAIL_PRICE=30;
+function foeDied(f){clog(`${f.n} повержен`);if(tr('harvest'))heal(maxHp()*.15,true)}
+function lunge(){const h=$('#cHero');h.style.transform='translateX(18px)';setTimeout(()=>h.style.transform='',140)}
 function tailCheck(f){
   if(f.sk!=='tail'||f.tailLost)return;
   f.tailLost=true;S.tails=(S.tails||0)+1;C.tails++;
   const el=foeEl(f);el.querySelector('img').src=spriteURL('igu',{t:''});
   setTimeout(()=>floatOn(el,'хвост отпал!','heal'),250);
-  clog('У игуаны отпал хвост! Вы подбираете трофей: хвост игуаны');
+  clog('У игуаны отпал хвост! Трофей: хвост игуаны');
 }
-const alive=()=>C.foes.filter(f=>f.hp>0);
-function act(id){
+function act(kind,arg){
   if(!C||C.busy)return;
-  const sk=SKB[id],r=rank(id);
-  if(sk){if(!r||S.en<skCost(id))return;S.en-=skCost(id)}
-  C.guard=null;
-  const t=C.foes[C.tgt];
-  switch(id){
-    case'hit':{const d=hitFoe(t,1+.1*(r-1),'Удар');if(d&&r>=3&&Math.random()<.25)addSt(t,'bleed',3,Math.round(atk()*.3));if(r>=5&&t.hp>0&&Math.random()<.25)hitFoe(t,1+.1*(r-1),'Второй удар');break}
-    case'rush':{const d=hitFoe(t,1.8+.15*(r-1),'Кровавый рывок');if(d&&r>=2)addSt(t,'bleed',3,Math.round(atk()*.35));break}
-    case'bite':{const d=hitFoe(t,1.2+.1*(r-1),'Вампирский укус');if(d){let h=d*(.6+.1*(r-1));if(r>=5&&S.hp<maxHp()*.3)h*=2;heal(Math.round(h));if(r>=3)S.en=Math.min(maxEn(),S.en+4)}break}
-    case'whirl':alive().forEach(f=>{const d=hitFoe(f,.8+.1*(r-1),null);if(d&&r>=3)addSt(f,'bleed',3,Math.round(atk()*.25));if(d&&r>=5&&Math.random()<.2)addSt(f,'stun',1)});clog('Вихрь клинков задевает всех врагов');break;
-    case'stun':{const d=hitFoe(t,1.1+.1*(r-1),'Оглушающий удар');if(d&&Math.random()<.4+.1*(r-1)){addSt(t,'stun',1);clog(`${t.n} оглушён`)}if(d&&r>=4)addSt(t,'weak',2);break}
-    case'seal':{const d=magic(t,12+S.wil*4+8*(r-1),'Тёмная печать');if(d&&r>=3)addSt(t,'weak',3);if(d&&r>=5)addSt(t,'burn',3,6+S.wil*2);break}
-    case'fire':alive().forEach(f=>{magic(f,8+S.wil*2+6*(r-1),null);addSt(f,'burn',r>=4?5:3,4+S.wil+3*r)});clog('Огненная склянка поджигает врагов');break;
-    case'cry':C.cry={t:r>=3?4:3,p:.25+.05*(r-1),c:r>=5?15:0};floatOn($('#cHero'),'клич!','en');clog(`Боевой клич: атака +${Math.round(C.cry.p*100)}%`);break;
-    case'guard':C.guard={red:r>=5?.3:.5,counter:r>=3};S.en=Math.min(maxEn(),S.en+6+2*(r-1));floatOn($('#cHero'),`+${6+2*(r-1)} эн.`,'en');clog('Вы встаёте в защитную стойку');break;
-    case'pot':if(!S.pots)return;S.pots--;heal(Math.round(maxHp()*.45));C.pois=null;clog('Вы пьёте зелье крови');break;
-    case'elix':if(!S.elix)return;S.elix--;S.en=Math.min(maxEn(),S.en+Math.round(maxEn()*.6));floatOn($('#cHero'),'+эн.','en');clog('Эликсир возвращает силы');break;
-    case'flee':if(C.boss)return;if(Math.random()*100<45+S.agi*2){endCombat('flee');return}clog('Сбежать не удалось');break;
+  let t=C.foes[C.tgt];if(!t||t.hp<=0){C.tgt=C.foes.findIndex(f=>f.hp>0);t=C.foes[C.tgt]}
+  const pay=c=>{if(C.fp<c)return false;C.fp-=c;if(C.firstFree&&c===0)C.firstFree=false;return true};
+  switch(kind){
+    case'atk':hitFoe(t,1,'Удар');break;
+    case'dual':{const c=fpCost(20);if(!pay(c))return;C.firstFree=false;hitFoe(t,1,'Удар',{hand:'main'});const t2=t.hp>0?t:alive()[0];if(t2)hitFoe(t2,1,'Левой',{hand:'off'});break}
+    case'wsk':{
+      const[hand,i]=arg.split('|'),it=hand==='main'?S.eq.main:S.eq.off;if(!it)return;
+      const w=it.cat==='shield'?WT.shield:WT[itemBase(it).wt],s=w.sk[+i],c=fpCost(s.fp);
+      if(!pay(c))return;C.firstFree=false;
+      if(s.stance){buff('stance',1);clog('Вы прикрываетесь щитом');break}
+      if(s.mag){const pow=magPow(s.mag[0],s.mag[1]);const d=magic(t,pow,s.n);if(s.drain)heal(d*.6);break}
+      const targets=s.all?alive():[t];
+      for(const f of targets)for(let k=0;k<(s.hits||1);k++){const x=f.hp>0?f:null;if(x)hitFoe(x,s.m,k?null:s.n,{hand,crit:s.crit,pen:s.pen,stun:s.stun,bleed:s.bleed,pois:s.pois,sunder:s.sunder})}
+      break}
+    case'ab':{const A=ABIL[arg];if(!A||(C.cd[arg]||0)>0)return;const c=fpCost(A.fp);if(!pay(c))return;C.firstFree=false;A.run(t);if(A.cd)C.cd[arg]=A.cd+1;break}
+    case'hp':if(!S.pots)return;S.pots--;heal(maxHp()*.4*(1+.15*tr('alchemy')));C.pois=null;clog('Вы пьёте зелье здоровья');break;
+    case'fpp':if(!S.fpots)return;S.fpots--;{const g=Math.round(maxFp()*.5*(1+.15*tr('alchemy')));C.fp=Math.min(maxFp(),C.fp+g);floatOn($('#cHero'),'+'+g+' FP','en')}clog('Вы пьёте зелье фокуса');break;
+    case'skip':clog('Вы выжидаете');C.fp=Math.min(maxFp(),C.fp+5);break;
+    case'endc':C.acts=0;break;
+    case'flee':if(C.boss)return;if(Math.random()*100<fleeCh()){endCombat('flee');return}clog('Сбежать не удалось!');if(!tr('escape'))C.fleeFail=true;C.combo=false;C.acts=0;break;
+    default:return;
   }
-  if(!alive().length){C.busy=true;updCombat();setTimeout(()=>endCombat('win'),700);return}
+  if(!alive().length){C.busy=true;updCombat();setTimeout(()=>endCombat('win'),750);return}
   if(C.foes[C.tgt].hp<=0)C.tgt=C.foes.findIndex(f=>f.hp>0);
+  if(C.combo){C.acts--;if(C.acts>0&&kind!=='endc'){updCombat();return}C.combo=false}
   enemyPhase();
 }
 function enemyPhase(){
@@ -1133,75 +1536,91 @@ function enemyPhase(){
   const list=alive();let i=0;
   const next=()=>{
     if(!C)return;
-    if(i>=list.length){
-      if(C.pois&&S.hp>0){const d=C.pois.d;S.hp=Math.max(1,S.hp-d);floatOn($('#cHero'),'-'+d+' яд','dot');if(--C.pois.t<=0)C.pois=null}
-      if(C.cry&&--C.cry.t<=0){C.cry=null;clog('Боевой клич стихает')}
-      C.busy=false;C.turn++;S.en=Math.min(maxEn(),S.en+3+gs('regen'));updCombat();return}
+    if(i>=list.length){newTurn();return}
     const f=list[i++];
     if(f.hp>0){
       const el=foeEl(f);
-      for(const k of['bleed','burn']){const s=f.st[k];if(!s)continue;f.hp=Math.max(0,f.hp-s.d);floatOn(el,'-'+s.d,'dot');if(--s.t<=0)delete f.st[k];if(f.hp<=0){clog(`${f.n} погибает от ${k==='bleed'?'кровотечения':'огня'}`);break}}
-      if(f.hp>0){if(f.st.stun){delete f.st.stun;floatOn(el,'оглушён','miss');clog(`${f.n} пропускает ход`)}else foeAct(f);if(f.st.weak&&--f.st.weak<=0)delete f.st.weak}
+      for(const k of['bleed','burn','pois']){const s=f.st[k];if(!s)continue;f.hp=Math.max(0,f.hp-s.d);floatOn(el,'-'+s.d,'dot');if(--s.t<=0)delete f.st[k];if(f.hp<=0){clog(`${f.n} погибает от ${k==='bleed'?'кровотечения':k==='burn'?'огня':'яда'}`);if(tr('harvest'))heal(maxHp()*.15,true);break}}
+      if(f.hp>0){if(f.st.stun){if(--f.st.stun<=0)delete f.st.stun;floatOn(el,'оглушён','miss');clog(`${f.n} пропускает ход`)}else foeAct(f);
+        for(const k of['weak','mark','sunder'])if(f.st[k]&&--f.st[k]<=0)delete f.st[k]}
     }
+    if(S.hp<=0&&C.undying){S.hp=1;C.undying=false;clog('Бессмертие! Вы удерживаетесь на краю');floatOn($('#cHero'),'бессмертие','heal')}
     updCombat();
     if(S.hp<=0){C.busy=true;setTimeout(()=>endCombat('lose'),800);return}
     if(!alive().length){setTimeout(()=>endCombat('win'),600);return}
-    if(C.foes[C.tgt].hp<=0)C.tgt=C.foes.findIndex(x=>x.hp>0);
-    setTimeout(next,420);
+    setTimeout(next,460);
   };
-  setTimeout(next,380);
+  setTimeout(next,360);
+}
+function newTurn(){
+  C.turn++;C.fleeFail=false;delete C.pb.stance;
+  C.fp=Math.min(maxFp(),C.fp+fpRegen());
+  for(const k in C.cd)if(C.cd[k]>0)C.cd[k]--;
+  for(const k of['cry','frenzy','wall','smoke','retri','regen','parry'])if(C.pb[k]&&--C.pb[k]<=0)delete C.pb[k];
+  if(C.pois&&S.hp>0){const d=C.pois.d;S.hp=Math.max(1,S.hp-d);floatOn($('#cHero'),'-'+d+' яд','dot');if(--C.pois.t<=0)C.pois=null}
+  if(lin('osvet'))heal(maxHp()*.02,true);
+  if(C.pb.regen)heal(maxHp()*.05,true);
+  C.moons++;
+  if(C.moons>=(tr('rhythm')?2:3)){C.combo=true;C.acts=3+tr('flow');C.moons=0;banner('Комбо-ход!');Snd.sfx('level')}
+  C.busy=false;updCombat();
 }
 function foeAct(f){
   f.turn++;
-  const el=foeEl(f);el.style.transform='translateY(6px)';setTimeout(()=>el.style.transform='',160);
+  const el=foeEl(f);el.style.transform='translateX(-22px)';setTimeout(()=>el.style.transform='',170);
   let mult=1,ignore=false,verb='атакует',enDrain=0;
-  const a=f.atk*(f.st.weak?.7:1);
+  if(C.fleeFail){mult=1.5;verb='бьёт в спину';C.fleeFail=false}
+  const a=f.atk*(f.st.weak?.7-.1*tr('suppress'):1);
   if(f.sk==='howl'&&f.turn%3===0){f.atk=Math.round(f.atk*1.2);clog(`${f.n} воет — его атака растёт`);return}
   if(f.sk==='prince'&&!f.moon&&f.hp<f.max/2){f.moon=true;f.atk=Math.round(f.atk*1.25);clog('Луна алеет: Князь впадает в ярость');return}
-  if(f.sk==='rend'&&Math.random()<.25){mult=1.5;verb='рвёт когтями'}
-  if(f.sk==='hex'&&Math.random()<.35){mult=.9;ignore=true;verb='насылает порчу'}
-  if(f.sk==='frost'&&f.turn%3===0){mult=1.6;ignore=true;verb='обрушивает ледяную волну'}
-  if(f.sk==='smash'&&f.turn%3===0){mult=1.8;verb='обрушивает дубину'}
-  if(f.sk==='freeze'&&Math.random()<.25){mult=.9;ignore=true;enDrain=6;verb='дышит стужей'}
-  if(f.sk==='qspit'&&f.turn%3===0){mult=1.7;ignore=true;verb='плюёт кислотой'}
-  if(f.sk==='witch'&&f.turn%3===0){mult=1.6;ignore=true;enDrain=10;verb='насылает ледяную бурю'}
+  if(f.sk==='rend'&&Math.random()<.25){mult*=1.5;verb='рвёт когтями'}
+  if(f.sk==='hex'&&Math.random()<.35){mult*=.9;ignore=true;verb='насылает порчу'}
+  if(f.sk==='frost'&&f.turn%3===0){mult*=1.6;ignore=true;verb='обрушивает ледяную волну'}
+  if(f.sk==='smash'&&f.turn%3===0){mult*=1.8;verb='обрушивает дубину'}
+  if(f.sk==='freeze'&&Math.random()<.25){mult*=.9;ignore=true;enDrain=8;verb='дышит стужей'}
+  if(f.sk==='qspit'&&f.turn%3===0){mult*=1.7;ignore=true;verb='плюёт кислотой'}
+  if(f.sk==='witch'&&f.turn%3===0){mult*=1.6;ignore=true;enDrain=14;verb='насылает ледяную бурю'}
   if(f.sk==='drain'||f.sk==='prince')verb='пьёт вашу кровь';
-  if(!ignore&&Math.random()*100<dodge()){floatOn($('#cHero'),'уклон','miss');Snd.sfx('miss');clog(`${f.n} промахивается`);return}
-  let d=a*mult*rnd(.85,1.15);if(!ignore)d-=def();d=Math.max(1,Math.round(d));
-  if(C.guard)d=Math.max(1,Math.round(d*C.guard.red));
-  S.hp=Math.max(0,S.hp-d);floatOn($('#cHero'),'-'+d,'hurt');shakeEl($('#cHero'));Snd.sfx('hurt');
-  if(enDrain)S.en=Math.max(0,S.en-enDrain);
+  const hero=$('#cHero');
+  if(C.pb.parry){delete C.pb.parry;floatOn(hero,'парирование','en');clog(`Вы парируете атаку: ${f.n}`);hitFoe(f,1.5,'Ответный удар');return}
+  if(!ignore&&Math.random()*100<dodge()){floatOn(hero,'уклон','miss');Snd.sfx('miss');clog(`${f.n} промахивается`);if(lin('ratven'))C.pb.ambush=1;return}
+  let d=a*mult*rnd(.85,1.15);if(!ignore)d-=def();d=Math.max(1,d);
+  let blocked=false;if(!ignore&&Math.random()*100<block()){d*=.5;blocked=true}
+  if(C.pb.stance)d*=.3;if(C.pb.wall)d*=.4;if(C.pb.frenzy)d*=1.3;
+  d=Math.max(1,Math.round(d));
+  S.hp=Math.max(0,S.hp-d);floatOn(hero,(blocked?'блок −':'-')+d,'hurt');shakeEl(hero);Snd.sfx('hurt');
+  if(enDrain)C.fp=Math.max(0,C.fp-enDrain);
   if(f.sk==='drain'||f.sk==='prince')f.hp=Math.min(f.max,f.hp+Math.round(d*.5));
   if((f.sk==='poison'&&Math.random()<.3)||(f.sk==='qspit'&&Math.random()<.4)){C.pois={t:3,d:Math.max(2,Math.round(a*.3))};clog('Вы отравлены')}
-  clog(`${f.n} ${verb}: −${d}${enDrain?`, −${enDrain} эн.`:''}`);
-  const th=gs('thorns');if(th&&S.hp>0){const r=Math.max(1,Math.round(d*th/100));f.hp=Math.max(0,f.hp-r);floatOn(el,'-'+r,'dot');if(f.hp<=0)clog(`${f.n} погибает на шипах`)}
-  if(C.guard&&C.guard.counter&&f.hp>0&&S.hp>0)hitFoe(f,.5,'Контратака');
+  clog(`${f.n} ${verb}: −${d}${blocked?' (блок)':''}${enDrain?`, −${enDrain} FP`:''}`);
+  const th=gs('thorns');if(th&&S.hp>0&&f.hp>0){const r=Math.max(1,Math.round(d*th/100));f.hp=Math.max(0,f.hp-r);floatOn(el,'-'+r,'dot');if(f.hp<=0)foeDied(f)}
+  if(C.pb.retri&&f.hp>0&&S.hp>0)hitFoe(f,.6,'Возмездие');
 }
-function levelUps(){let n=0;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;S.pts+=3;S.sp++;n++}if(n){S.hp=maxHp();S.en=maxEn()}return n}
+function levelUps(){let n=0;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;S.lvq++;S.tp+=2;n++}if(n){S.hp=maxHp();S.lvopts=null}return n}
 function endCombat(res){
   const c=C;if(!c)return;C=null;cEl.hidden=true;
   if(res==='flee'){const g=S.enemies.find(e=>e.uid===c.group);if(g)g.stun=4;anim={fx:S.x,fy:S.y,t0:performance.now()};S.x=S.prev.x;S.y=S.prev.y;toast('Вы отступили');updateHud();save();return}
   if(res==='lose'){
     Snd.sfx('lose');
     const lost=Math.floor(S.gold*.3);S.gold-=lost;const t=LOCS.find(l=>l.id===S.lastTown);
-    S.x=t.x;S.y=t.y;anim={fx:S.x,fy:S.y,t0:0};S.hp=maxHp();S.en=maxEn();reveal();
+    S.x=t.x;S.y=t.y;anim={fx:S.x,fy:S.y,t0:0};S.hp=maxHp();reveal();
     S.enemies.forEach(g=>{if(Math.abs(g.x-S.x)+Math.abs(g.y-S.y)<6)g.stun=6});
     save();
     openSheet('Вы пали',()=>`<div class="big"><div class="glyph">†</div><p>Местные нашли вас у дороги и принесли в поселение «${t.name}».${lost?` Пока вы лежали без сознания, пропало ${lost} золота.`:''}</p></div><button class="btn wide" data-act="close">Подняться</button>`,{noClose:true});
     return;
   }
   let xp=0,gold=0;const loot=[];
+  const luck=1+.1*tr('luck')+(lin('korvus')?.1:0);
   for(const f of c.foes){xp+=f.xp;gold+=f.gold;
     if(!f.boss){S.kills[f.type]=(S.kills[f.type]||0)+1;onKill(f.type).forEach(m=>loot.push(`<span>${m}</span>`))}
     if(S.bounty&&S.bounty.type===f.type&&S.bounty.have<S.bounty.need)S.bounty.have++;
-    if(!f.boss&&Math.random()<.11){const it=genItem(pick(SLOTS),f.lvl,rollRar(.1));const m=addItem(it);loot.push(m?`<span>${m}</span>`:`<span class="r${it.rar}">${itemName(it)}</span>`)}}
-  xp=Math.round(xp*(1+gs('xp')/100));gold=Math.round(gold*(1+gs('gold')/100));
+    if(!f.boss&&Math.random()<.11*luck){const it=genItem(pick(CATS),f.lvl,rollRar(.1));const m=addItem(it);loot.push(m?`<span>${m}</span>`:`<span class="r${it.rar}">${esc(itemName(it))}</span>`)}}
+  xp=Math.round(xp*(1+(gs('xp')+5*tr('wisdom')+(lin('osvet')?10:0))/100));gold=Math.round(gold*(1+(gs('gold')+6*tr('greed')+(lin('ratven')?10:0))/100));
   if(c.tails)loot.push(`<span>Хвост игуаны${c.tails>1?' ×'+c.tails:''}</span>`);
-  if(!c.boss){if(Math.random()<.3){S.pots++;loot.push('<span>Зелье крови</span>')}if(Math.random()<.12){S.elix++;loot.push('<span>Эликсир сумрака</span>')}}
+  if(!c.boss){if(Math.random()<.3){S.pots++;loot.push('<span>Зелье здоровья</span>')}if(Math.random()<.18){S.fpots++;loot.push('<span>Зелье фокуса</span>')}}
   if(c.group)S.enemies=S.enemies.filter(g=>g.uid!==c.group);
-  if(c.boss){S.bosses[c.boss]=true;const tr=BOSS[c.boss].tro;if(!S.trophies.includes(tr))S.trophies.push(tr);loot.push(`<span class="r3">${TROPHY[tr].n}</span>`);
-    for(let i=0;i<2;i++){const it=genItem(pick(SLOTS),BOSS[c.boss].lvl,Math.random()<.35?3:2);const m=addItem(it);loot.push(m?`<span>${m}</span>`:`<span class="r${it.rar}">${itemName(it)}</span>`)}
-    S.pots+=2;}
+  if(c.boss){S.bosses[c.boss]=true;const tro=BOSS[c.boss].tro;if(!S.trophies.includes(tro))S.trophies.push(tro);loot.push(`<span class="r3">${TROPHY[tro].n}</span>`);
+    for(let i=0;i<2;i++){const it=genItem(pick(CATS),BOSS[c.boss].lvl,Math.random()<.35?3:2);const m=addItem(it);loot.push(m?`<span>${m}</span>`:`<span class="r${it.rar}">${esc(itemName(it))}</span>`)}
+    S.pots+=2;S.fpots+=1;}
   S.xp+=xp;S.gold+=gold;const ups=levelUps();
   Snd.sfx('win');if(ups)setTimeout(()=>Snd.sfx('level'),900);
   if(c.boss==='prince'){S.won=true;save();
@@ -1209,21 +1628,21 @@ function endCombat(res){
   save();
   const readyQ=Object.keys(S.q).filter(qReady).map(q=>QUESTS[q]);
   openSheet(c.boss?'Великая победа':'Победа',()=>`<div class="loot"><span>+${xp} опыта</span><span class="price">+${gold} золота</span>${loot.join('')}</div>
-   ${ups?`<p style="text-align:center"><b>Новый уровень: ${S.lvl}!</b> +${ups*3} очк. характеристик и +${ups} очк. навыков — раздел «Герой».</p>`:''}
+   ${ups?`<p style="text-align:center"><b>Новый уровень: ${S.lvl}!</b> Тебя ждёт дар уровня и +${ups*2} очк. кровных линий.</p><button class="btn wide" data-act="goHero">Выбрать дар</button>`:''}
    ${readyQ.length?`<p class="lore" style="text-align:center">Задание выполнено: ${readyQ.map(q=>`«${q.n}»`).join(', ')}. Вернитесь к тому, кто его дал.</p>`:''}
    ${S.bounty&&S.bounty.have>=S.bounty.need?'<p class="lore" style="text-align:center">Заказ с доски выполнен — сдайте его в поселении.</p>':''}
-   <button class="btn wide" data-act="close">Дальше</button>`,{noClose:true});
+   <button class="btn ${ups?'ghost ':''}wide" data-act="close">Дальше</button>`,{noClose:true});
 }
+ACT.goHero=()=>{closeSheet();heroTab='stats';sel=null;openSheet('Герой',heroBody);return'nore'};
 
-/* ---------- music & sound (generated live with Web Audio, no files) ---------- */
+/* ---------- music & sound ---------- */
 const Snd=(()=>{
   const prefs={music:false,sfx:true,mvol:60,svol:65};
   try{Object.assign(prefs,JSON.parse(localStorage.getItem('ash-moon-audio')||'{}'))}catch(e){}
   const savePrefs=()=>{try{localStorage.setItem('ash-moon-audio',JSON.stringify(prefs))}catch(e){}};
   let ctx=null,musicBus,sfxBus,noiseBuf,timer=null,cur='explore',step=0,nextT=0,paused=false,wg=null;
   const gains={};
-  /* recorded tracks (OpenGameArt, see credits in the menu). The synth below is only a fallback when a file can't load (offline). */
-  // where to look for the tracks, in order: inside the Android app (bundled, works offline) -> the GitHub site -> built-in synth
+  /* recorded tracks (OpenGameArt, see credits in the menu); the synth below is only a fallback when a file can't load */
   const ONLINE='https://lintger-laplas.github.io/ash-moon/music/';
   const SRCS=location.hostname==='ashmoon.app'?['music/',ONLINE]:location.hostname.endsWith('github.io')?['music/']:[ONLINE];
   const files={},failed={};
@@ -1235,7 +1654,6 @@ const Snd=(()=>{
     return files[name];
   }
   const fileLevel=()=>prefs.music&&!paused?Math.min(1,Math.pow(prefs.mvol/100,2)*1.2):0;
-  let fader=null;
   function fade(){
     for(const n in files){const a=files[n];if(failed[n])continue;
       const target=n===cur?fileLevel():0,v=a.volume;
@@ -1247,6 +1665,8 @@ const Snd=(()=>{
   const mtof=m=>440*Math.pow(2,(m-69)/12);
   function impulse(sec,decay){const len=Math.floor(ctx.sampleRate*sec),b=ctx.createBuffer(2,len,ctx.sampleRate);
     for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay)}return b}
+  function level(kind){if(!prefs[kind])return 0;const v=(kind==='music'?prefs.mvol:prefs.svol)/100;return v*v*1.4}
+  function apply(kind){if(!ctx)return;const bus=kind==='music'?musicBus:sfxBus;bus.gain.setTargetAtTime(level(kind),ctx.currentTime,.12)}
   function init(){
     if(ctx){if(ctx.state==='suspended'&&!paused)ctx.resume();return}
     const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
@@ -1263,14 +1683,14 @@ const Snd=(()=>{
     const lfo=ctx.createOscillator();lfo.frequency.value=.06;const lg=ctx.createGain();lg.gain.value=260;lfo.connect(lg);lg.connect(bp.frequency);
     wg=ctx.createGain();wg.gain.value=0;wn.connect(bp);bp.connect(wg);wg.connect(gains.explore);wn.start();lfo.start();
     nextT=ctx.currentTime+.1;timer=setInterval(tick,25);
-    audioFor(cur);audioFor('battle');fader=setInterval(fade,60);
+    audioFor(cur);audioFor('battle');setInterval(fade,60);
   }
   function tick(){
     if(!ctx||ctx.state!=='running')return;
-    const tr=TR[cur],spb=60/tr.bpm/4;
+    const tr0=TR[cur],spb=60/tr0.bpm/4;
     if(!failed[cur]){nextT=ctx.currentTime+.05;return}
     if(nextT<ctx.currentTime-.2)nextT=ctx.currentTime+.05;
-    while(nextT<ctx.currentTime+.15){try{tr.play(step,nextT,gains[cur],spb)}catch(e){}step++;nextT+=spb}
+    while(nextT<ctx.currentTime+.15){try{tr0.play(step,nextT,gains[cur],spb)}catch(e){}step++;nextT+=spb}
   }
   function setTrack(name){
     if(name===cur||!TR[name])return;
@@ -1347,9 +1767,6 @@ const Snd=(()=>{
     lose(t){pad(sfxBus,t,[45,48,52],2.2,.07,600);[64,60,57,52].forEach((m,i)=>bell(sfxBus,t+i*.32,m,.08,1.4))},
   };
   function sfx(name){if(!ctx||!prefs.sfx||ctx.state!=='running'||!FX[name])return;try{FX[name](ctx.currentTime+.01)}catch(e){}}
-  // loudness curve: slider 0..100 -> gain 0..1.4 (squared so the low end is usable)
-  function level(kind){if(!prefs[kind])return 0;const v=(kind==='music'?prefs.mvol:prefs.svol)/100;return v*v*1.4}
-  function apply(kind){if(!ctx)return;const bus=kind==='music'?musicBus:sfxBus;bus.gain.setTargetAtTime(level(kind),ctx.currentTime,.12)}
   function toggle(kind){prefs[kind]=!prefs[kind];savePrefs();apply(kind);return prefs[kind]}
   let volT;
   function setVol(kind,v){prefs[kind==='music'?'mvol':'svol']=clamp(Math.round(v),0,100);apply(kind);clearTimeout(volT);volT=setTimeout(savePrefs,300)}
@@ -1359,7 +1776,7 @@ const Snd=(()=>{
   window.addEventListener('pagehide',pause);
   window.__appPause=pause;window.__appResume=resume;
   ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,init,{passive:true}));
-  return{setTrack,sfx,toggle,setVol,prefs,info:()=>({state:ctx?ctx.state:'none',track:cur,step,files:Object.fromEntries(Object.entries(files).map(([n,a])=>[n,{vol:+a.volume.toFixed(2),paused:a.paused,ready:a.readyState,failed:!!failed[n]}]))})};
+  return{setTrack,sfx,toggle,setVol,prefs,info:()=>({state:ctx?ctx.state:'none',track:cur,files:Object.fromEntries(Object.entries(files).map(([n,a])=>[n,{vol:+a.volume.toFixed(2),paused:a.paused,failed:!!failed[n]}]))})};
 })();
 function moodNow(){
   if(!$('#combat').hidden)return C&&C.boss?'boss':'battle';
@@ -1368,21 +1785,17 @@ function moodNow(){
 
 /* ---------- boot ---------- */
 function boot(saved){
-  if(saved&&saved.explored)S=migrate(saved);else S=newState();
+  const has=saved&&saved.explored;
+  S=has?migrate(saved):newState();
   genWorld(1337);
-  const fresh=!saved||!saved.explored;
-  if(fresh){S.eq.weapon=genItem('weapon',1,0,'rusty');S.eq.armor=genItem('armor',1,0,'jacket')}
-  if(fresh||S.migrated){S.hp=maxHp();S.en=maxEn()}
-  if(!S.enemies.length){for(let i=0;i<ENEMY_CAP;i++)spawnGroup(false);for(let i=0;i<14;i++)spawnGroup(false,START)}
-  anim={fx:S.x,fy:S.y,t0:0};path=[];reveal();updateHud();updMusicBtn();
-  if(S.intro){S.intro=false;openSheet('Пепельная Луна',()=>`<p class="lore">Сто ночей луна не заходит над Долиной Пепла. Она стала серой, как зола, и в её свете из могил встают мертвецы, а волки забывают страх.</p>
-   <p>Говорят, всё началось, когда в замке на севере проснулся Князь Ноктюрн. Вы — охотник, который пришёл в Серый Брод, чтобы его остановить.</p>
-   <p>Нажимайте на карту, чтобы идти. Цифра над врагом — его уровень. Люди со знаком «!» дают задания. Становитесь сильнее, собирайте снаряжение и идите на север.</p>
-   <button class="btn wide" data-act="close">В путь</button>`,{noClose:true})}
-  else if(S.migrated){openSheet('Долина изменилась',()=>`<p>Мир стал в несколько раз больше: пять поселений, ледяной север и гнилые топи, новые враги, шесть боссов и люди с заданиями.</p>
-   <p>Ваш герой сохранил уровень, характеристики, золото, трофеи и победы. Старое оружие и доспех теперь в разделе «Герой → Снаряжение».</p>
-   <p><b>Новое:</b> пять ячеек снаряжения, редкие вещи со свойствами, заточка в кузнице и прокачка навыков. За прошлые уровни вам начислено ${S.sp} очк. навыков.</p>
-   <button class="btn wide" data-act="close">В путь</button>`,{noClose:true});delete S.migrated}
+  if(S.migrated){S.needCreate=true;S.keepProgress=true;delete S.migrated}
+  if(!S.enemies||!S.enemies.length){S.enemies=[];for(let i=0;i<ENEMY_CAP;i++)spawnGroup(false);for(let i=0;i<14;i++)spawnGroup(false,START)}
+  if(!has){S.hp=1}
+  anim={fx:S.x,fy:S.y,t0:0};path=[];reveal();
+  if(S.needCreate){S.intro=false;openCreation()}
+  else{S.hp=Math.max(1,Math.min(S.hp,maxHp()))}
+  if(!S.needCreate)updateHud();
+  updMusicBtn();
   save();
 }
 let started=false;
