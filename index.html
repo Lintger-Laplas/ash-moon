@@ -473,9 +473,10 @@ function torso(o,shY){
   P([[49,shY-1],[56,shY-1],[52.5,shY+6]],shade(t,-.5));
   strokes(3,i=>[[46+i*4,shY+13],[47+i*4,shY+25]],.8,shade(t,-.6),.3);
   if(o.plate){const pp=[[44,shY-1],[60,shY-1],[61,shY+16],[52,shY+20],[43,shY+16]];P(pp,lg(shY-1,shY+20,o.plate));Ln([...pp,pp[0]],.8,shade(o.plate,-.6));Ln([[43.6,shY+11],[60.6,shY+11]],.7,shade(o.plate,-.5));Ln([[52,shY+3],[52,shY+19]],.8,shade(o.plate,.4));gloss(48,shY+7,3,2,.35)}
+  if(!o.plate&&!o.noTails){P([[43,shY+26],[62,shY+26],[64,shY+38],[54,shY+36],[52.5,shY+31],[51,shY+36],[41,shY+38]],lg(shY+26,shY+38,shade(t,-.08)));Ln([[52.5,shY+31],[52.5,shY+27]],.6,shade(t,-.6))}
   if(o.belt){P([[43.4,shY+23],[61.6,shY+23],[61.4,shY+27.4],[43.6,shY+27.4]],lg(shY+23,shY+27,o.belt));P([[51,shY+23.3],[54.6,shY+23.3],[54.6,shY+27],[51,shY+27]],lg(shY+23,shY+27,GOLD));E(52.8,shY+25.2,.8,1,shade(o.belt,-.4));
     P([[44.5,shY+27],[49,shY+27],[48.6,shY+32],[45,shY+32]],lg(shY+27,shY+32,shade(o.belt,-.1)));
-    if(!o.plate){Ln([[45,shY+2],[60,shY+23]],2,shade(o.belt,-.15));Ln([[45,shY+1.4],[60,shY+22.4]],.5,shade(o.belt,.3))}
+    if(!o.plate){Ln([[45,shY+2],[60,shY+23]],2.2,shade(o.belt,-.15));Ln([[45,shY+1.2],[60,shY+22.2]],.6,shade(o.belt,.35));P([[53.6,shY+11],[56.4,shY+11],[56.4,shY+13.6],[53.6,shY+13.6]],shade(GOLD,-.15))}
     P([[56.4,shY+26],[61.2,shY+26],[61,shY+32],[56.6,shY+32]],lg(shY+26,shY+32,shade(o.belt,.05)));Ln([[56.4,shY+27.6],[61.2,shY+27.6]],.6,shade(o.belt,-.55))}
   if(o.clasp)E(57.5,shY+2,2.1,2.1,rg(57.5,shY+2,2.1,o.clasp));
 }
@@ -498,7 +499,7 @@ function headArt(o,hx,hy,skin){
   /* angular silhouettes: brow, nose, jaw corner and chin instead of a ball */
   const HEAD=[[hx-7.5,hy-2],[hx-6.6,hy-8],[hx-1,hy-10.6],[hx+5,hy-9.2],[hx+7.8,hy-4.8],[hx+8.2,hy-2.2],[hx+10,hy+2],[hx+8.3,hy+2.9],[hx+8.6,hy+4.6],[hx+7.6,hy+5.8],[hx+7.9,hy+7.6],[hx+5.2,hy+9.4],[hx+.6,hy+8.8],[hx-2.6,hy+5.6],[hx-6,hy+3.4]];
   const HOOD=[[hx-11.5,hy+10],[hx-12.5,hy-3],[hx-8,hy-11.5],[hx,hy-14.5],[hx+7,hy-11.5],[hx+10.8,hy-3],[hx+10.8,hy+6],[hx+6,hy+11.5],[hx-4,hy+12.5]];
-  seg(hx-2,hy+7,hx-1,hy+13,5,5.2,sk2);
+  seg(hx-2,hy+7,hx-1.5,hy+11,5.4,5.6,sk2);
   if(o.hood)P(HOOD,lg(hy-14,hy+12,shade(o.hood,-.15)));
   if(o.hair&&!o.hood&&!b)P([[hx-10,hy+6],[hx-10.8,hy-4],[hx-7,hy-11],[hx-1,hy-12],[hx-1,hy+2],[hx-5,hy+8]],lg(hy-12,hy+8,shade(o.hair,-.2)));
   P(HEAD,lg(hy-11,hy+10,base,.22,-.3));
@@ -569,6 +570,7 @@ function humanoid(o){
     else if(bone)ribcage(bone,shY);
     else torso(o,shY);
     if(o.cloak&&!o.robe)cloakCollar(o.cloak,shY);
+    else if(!bone&&!o.robe&&!o.noScarf){const sc=o.scarf||shade(tun,-.15);P([[44,shY+1],[40.5,shY+13],[45.5,shY+12]],lg(shY,shY+13,shade(sc,-.15)));P([[43,shY-5],[57,shY-6.5],[60.5,shY+1.5],[52,shY+4.5],[42,shY+2.5]],lg(shY-7,shY+5,sc));Ln([[44,shY-1.5],[58,shY-2.5]],.6,shade(sc,-.5));Ln([[45,shY+1.2],[57,shY+.4]],.6,shade(sc,-.5))}
     X.restore();
     if(!o.noLegs&&!o.robe){
       if(bone){seg(55,62,61,73,3.2,2.8,bone);E(61,73,2,2,shade(bone,.2));seg(61,73,65,85,2.8,2.3,bone);E(67,88,3.8,1.9,bone)}
@@ -581,8 +583,9 @@ function humanoid(o){
   if(!o.noArm){
     /* weapon arm in a ready pose: elbow down, hand raised in front of the chest */
     X.save();lean();const fA=bone||slv;
+    if(!bone&&!o.pauldron){E(61,shY+3,6.2,5,rg(61,shY+2,6,shade(slv,-.1)));X.save();X.globalAlpha=.5;X.beginPath();X.arc(61,shY+3,5.6,.3,2.6);X.strokeStyle=shade(slv,-.6);X.lineWidth=.7;X.stroke();X.restore()}
     if(o.pauldron){E(62,shY+2,6.6,4.9,rg(62,shY+1,6,o.pauldron));gloss(60,shY,2,1,.4)}
-    seg(62,shY+2,64,shY+14,bone?2.8:6.6,bone?2.6:5.6,fA);seg(64,shY+14,70.5,shY+11.5,bone?2.6:5.6,bone?2.2:4.6,fA);
+    seg(62,shY+2,64,shY+14,bone?2.8:7.2,bone?2.6:6.2,fA);seg(64,shY+14,70.5,shY+11.5,bone?2.6:5.6,bone?2.2:4.6,fA);
     if(!bone)E(70,shY+11.5,2.9,2.6,shade(fA,-.25));
     if(o.claws)for(let i=0;i<3;i++)Ln([[72,47],[77+i,50+i*1.6]],1.1,'#e8e0c8');
     const glv2=bone||(o.claws||o.bare?skin:o.glove||shade(bt,.12));if(!bone&&glv2!==skin)seg(67,shY+12.9,69.6,shY+11.9,6.8,6.4,glv2);
@@ -788,6 +791,7 @@ function getSprite(name,over){
   const lgt=X.createLinearGradient(0,0,N,N);lgt.addColorStop(0,'rgba(255,236,205,.14)');lgt.addColorStop(.5,'rgba(0,0,0,0)');lgt.addColorStop(1,'rgba(14,4,28,.26)');
   X.fillStyle=lgt;X.fillRect(0,0,N,N);
   if(!icon){
+    X.globalCompositeOperation='saturation';X.globalAlpha=.2;X.fillStyle='#7a7a80';X.fillRect(0,0,N,N);X.globalAlpha=1;X.globalCompositeOperation='destination-in';X.drawImage(sil,0,0);X.globalCompositeOperation='source-atop';
     /* values fall off towards the feet so the face and weapon read first */
     const vg=X.createLinearGradient(0,N*.3,0,N*.92);vg.addColorStop(0,'rgba(10,5,15,0)');vg.addColorStop(1,'rgba(10,5,15,.45)');X.fillStyle=vg;X.fillRect(0,0,N,N);
     /* cool rim light on the upper-left edges */
