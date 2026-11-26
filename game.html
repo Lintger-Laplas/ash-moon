@@ -69,7 +69,8 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .sheet-body{overflow-y:auto;padding-block:14px calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));display:grid;gap:14px}
 .sheet-body p{margin:0;line-height:1.5;color:#d8cdbb}
 .lore{font-style:italic;color:var(--muted)!important}
-.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.sheet-body{grid-auto-rows:max-content;align-content:start}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex:none;position:sticky;top:-14px;z-index:2;background:var(--panel);padding-block:4px;margin-block:-4px}
 .tabs button{flex:1 0 auto;white-space:nowrap;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted)}
 .tabs button.on{background:var(--panel2);color:var(--bone);border-color:var(--blood)}
 .rows{display:grid;gap:8px}
@@ -1018,7 +1019,7 @@ function updMusicBtn(){const b=$('#nMusic'),on=Snd.prefs.music;b.classList.toggl
 $('#nMusic').onclick=()=>{const on=Snd.toggle('music');updMusicBtn();toast(on?'Музыка включена. Громкость — в «Меню»':'Музыка выключена')};
 ACT.askReset=()=>{confirmNew=true};ACT.noReset=()=>{confirmNew=false};
 ACT.reset=()=>{confirmNew=false;closeSheet();try{localStorage.removeItem(SAVE_KEY)}catch(e){}boot(null);return'nore'};
-$('#nHero').onclick=()=>{if(!busy())openSheet('Герой',heroBody)};
+$('#nHero').onclick=()=>{if(!busy()){heroTab='stats';openSheet('Герой',heroBody)}};
 $('#nQuest').onclick=()=>{if(!busy())openSheet('Задания',questBody)};
 $('#nMap').onclick=()=>{if(!busy())openSheet('Карта долины',mapBody,{after:drawMini})};
 $('#nMenu').onclick=()=>{if(!busy()){confirmNew=false;openSheet('Пепельная Луна',menuBody)}};
