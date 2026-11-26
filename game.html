@@ -1006,6 +1006,8 @@ function menuBody(){
    <div class="row" style="flex-wrap:wrap"><div class="t"><b>Звуки</b><small>Удары, лечение, монеты</small></div><button class="btn${Snd.prefs.sfx?'':' ghost'}" data-act="tglSfx">${Snd.prefs.sfx?'Вкл':'Выкл'}</button>
     <label class="vol" style="flex-basis:100%">Громкость<input type="range" id="vol-sfx" min="0" max="100" step="5" value="${Snd.prefs.svol}" data-vol="sfx" aria-label="Громкость звуков"><output>${Snd.prefs.svol}%</output></label></div>
   </div>
+  <h3>Музыка в игре</h3>
+  <p class="lore" style="font-size:13px;line-height:1.55">Странствия — «Dark Ambient», Alexandr Zhelanov (CC-BY 3.0)<br>Поселения — «Medieval: The Old Tower Inn», RandomMind (CC0)<br>Бои — «Battle Theme A», cynicmusic (CC0)<br>Боссы — «Darkness March», Alexandr Zhelanov (CC-BY 4.0)<br>Источник: opengameart.org. Без интернета играет встроенная музыка.</p>
   ${confirmNew?`<p><b>Начать заново?</b> Текущий герой и весь прогресс будут удалены.</p><button class="btn wide" data-act="reset">Да, начать заново</button><button class="btn ghost wide" data-act="noReset">Отмена</button>`
   :`<button class="btn ghost wide" data-act="askReset">Новая игра</button>`}
   <button class="btn wide" data-act="close">Продолжить</button>`;
@@ -1217,8 +1219,27 @@ const Snd=(()=>{
   const prefs={music:false,sfx:true,mvol:60,svol:65};
   try{Object.assign(prefs,JSON.parse(localStorage.getItem('ash-moon-audio')||'{}'))}catch(e){}
   const savePrefs=()=>{try{localStorage.setItem('ash-moon-audio',JSON.stringify(prefs))}catch(e){}};
-  let ctx=null,musicBus,sfxBus,noiseBuf,timer=null,cur='explore',step=0,nextT=0,paused=false;
+  let ctx=null,musicBus,sfxBus,noiseBuf,timer=null,cur='explore',step=0,nextT=0,paused=false,wg=null;
   const gains={};
+  /* recorded tracks (OpenGameArt, see credits in the menu). The synth below is only a fallback when a file can't load (offline). */
+  const MUSIC_BASE=(location.hostname.endsWith('github.io')?'':'https://lintger-laplas.github.io/ash-moon/')+'music/';
+  const files={},failed={};
+  function audioFor(name){
+    if(failed[name])return null;
+    if(!files[name]){const a=new Audio();a.preload='auto';a.loop=true;a.volume=0;
+      a.addEventListener('error',()=>{failed[name]=true;try{a.pause()}catch(e){}});a.src=MUSIC_BASE+name+'.mp3';files[name]=a}
+    return files[name];
+  }
+  const fileLevel=()=>prefs.music&&!paused?Math.min(1,Math.pow(prefs.mvol/100,2)*1.2):0;
+  let fader=null;
+  function fade(){
+    for(const n in files){const a=files[n];if(failed[n])continue;
+      const target=n===cur?fileLevel():0,v=a.volume;
+      if(target>0&&a.paused){if(v===0&&n!=='explore'&&n!=='town')try{a.currentTime=0}catch(e){}a.play().catch(()=>{})}
+      a.volume=Math.abs(target-v)<.04?target:v+Math.sign(target-v)*.04;
+      if(target===0&&a.volume===0&&!a.paused)a.pause();}
+    if(wg)wg.gain.value=failed.explore?.07:0;
+  }
   const mtof=m=>440*Math.pow(2,(m-69)/12);
   function impulse(sec,decay){const len=Math.floor(ctx.sampleRate*sec),b=ctx.createBuffer(2,len,ctx.sampleRate);
     for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay)}return b}
@@ -1236,12 +1257,14 @@ const Snd=(()=>{
     const wn=ctx.createBufferSource();wn.buffer=noiseBuf;wn.loop=true;
     const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=420;bp.Q.value=1.4;
     const lfo=ctx.createOscillator();lfo.frequency.value=.06;const lg=ctx.createGain();lg.gain.value=260;lfo.connect(lg);lg.connect(bp.frequency);
-    const wg=ctx.createGain();wg.gain.value=.07;wn.connect(bp);bp.connect(wg);wg.connect(gains.explore);wn.start();lfo.start();
+    wg=ctx.createGain();wg.gain.value=0;wn.connect(bp);bp.connect(wg);wg.connect(gains.explore);wn.start();lfo.start();
     nextT=ctx.currentTime+.1;timer=setInterval(tick,25);
+    audioFor(cur);audioFor('battle');fader=setInterval(fade,60);
   }
   function tick(){
     if(!ctx||ctx.state!=='running')return;
     const tr=TR[cur],spb=60/tr.bpm/4;
+    if(!failed[cur]){nextT=ctx.currentTime+.05;return}
     if(nextT<ctx.currentTime-.2)nextT=ctx.currentTime+.05;
     while(nextT<ctx.currentTime+.15){try{tr.play(step,nextT,gains[cur],spb)}catch(e){}step++;nextT+=spb}
   }
@@ -1249,6 +1272,7 @@ const Snd=(()=>{
     if(name===cur||!TR[name])return;
     const old=cur;cur=name;step=0;
     if(!ctx)return;
+    audioFor(name);
     const now=ctx.currentTime;
     gains[old].gain.cancelScheduledValues(now);gains[old].gain.setTargetAtTime(0,now,.3);
     gains[name].gain.cancelScheduledValues(now);gains[name].gain.setTargetAtTime(1,now,.35);
@@ -1325,13 +1349,13 @@ const Snd=(()=>{
   function toggle(kind){prefs[kind]=!prefs[kind];savePrefs();apply(kind);return prefs[kind]}
   let volT;
   function setVol(kind,v){prefs[kind==='music'?'mvol':'svol']=clamp(Math.round(v),0,100);apply(kind);clearTimeout(volT);volT=setTimeout(savePrefs,300)}
-  function pause(){paused=true;if(ctx&&ctx.state==='running')ctx.suspend()}
+  function pause(){paused=true;if(ctx&&ctx.state==='running')ctx.suspend();for(const n in files){files[n].volume=0;try{files[n].pause()}catch(e){}}}
   function resume(){paused=false;if(ctx&&ctx.state==='suspended')ctx.resume()}
   document.addEventListener('visibilitychange',()=>document.hidden?pause():resume());
   window.addEventListener('pagehide',pause);
   window.__appPause=pause;window.__appResume=resume;
   ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,init,{passive:true}));
-  return{setTrack,sfx,toggle,setVol,prefs,info:()=>({state:ctx?ctx.state:'none',track:cur,step})};
+  return{setTrack,sfx,toggle,setVol,prefs,info:()=>({state:ctx?ctx.state:'none',track:cur,step,files:Object.fromEntries(Object.entries(files).map(([n,a])=>[n,{vol:+a.volume.toFixed(2),paused:a.paused,ready:a.readyState,failed:!!failed[n]}]))})};
 })();
 function moodNow(){
   if(!$('#combat').hidden)return C&&C.boss?'boss':'battle';
