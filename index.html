@@ -41,6 +41,12 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .bar span{position:relative;display:block;font-size:11px;line-height:12px;text-align:center;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000}
 .gold{flex:none;font-variant-numeric:tabular-nums;color:var(--gold);font-weight:700;display:flex;align-items:center;gap:5px}
 .gold::before{content:"";width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffe29a,var(--gold) 55%,#7a5412)}
+.mus{flex:none;position:relative;width:34px;height:34px;border-radius:50%;border:1px solid var(--gold);background:var(--panel2);color:var(--gold);font-size:17px;line-height:1}
+.mus.off{border-color:var(--line);color:var(--muted)}
+.mus.off::after{content:"";position:absolute;left:7px;right:7px;top:50%;height:2px;background:var(--blood-hi);transform:rotate(-45deg)}
+.vol{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.vol input{flex:1;min-width:0;accent-color:var(--blood-hi);height:28px}
+.vol output{width:3.2em;text-align:right;font-variant-numeric:tabular-nums;color:var(--bone)}
 .zone{margin-top:5px;font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
 .zone b{color:var(--bone);font-weight:400}
 #view{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}
@@ -163,6 +169,7 @@ h3{margin:4px 0 0;font-family:var(--f-display);font-weight:400;font-size:15px;le
         <span class="bar xp"><i id="hXp"></i></span>
       </div>
       <div class="gold" id="hGold">0</div>
+      <button class="mus off" id="nMusic" type="button" aria-label="Включить музыку">♪</button>
     </div>
     <div class="zone"><span id="hZone">Окрестности Брода</span><b id="hThreat">угроза 1</b></div>
   </header>
@@ -994,14 +1001,19 @@ function menuBody(){
   return`<p>Нажмите на клетку карты, чтобы идти туда. Враги ходят вместе с вами: если их отряд окажется на вашей клетке, начнётся бой. Люди со знаком «!» дают задания, «?» — ждут отчёта.</p>
   <p>Игра сохраняется сама — после каждого боя, в поселениях и в пути.</p>
   <div class="rows">
-   <div class="row"><div class="t"><b>Музыка</b><small>Своя тема для странствий, поселений, боёв и боссов</small></div><button class="btn${Snd.prefs.music?'':' ghost'}" data-act="tglMusic">${Snd.prefs.music?'Вкл':'Выкл'}</button></div>
-   <div class="row"><div class="t"><b>Звуки</b><small>Удары, лечение, монеты</small></div><button class="btn${Snd.prefs.sfx?'':' ghost'}" data-act="tglSfx">${Snd.prefs.sfx?'Вкл':'Выкл'}</button></div>
+   <div class="row" style="flex-wrap:wrap"><div class="t"><b>Музыка</b><small>Своя тема для странствий, поселений, боёв и боссов</small></div><button class="btn${Snd.prefs.music?'':' ghost'}" data-act="tglMusic">${Snd.prefs.music?'Вкл':'Выкл'}</button>
+    <label class="vol" style="flex-basis:100%">Громкость<input type="range" id="vol-music" min="0" max="100" step="5" value="${Snd.prefs.mvol}" data-vol="music" aria-label="Громкость музыки"><output>${Snd.prefs.mvol}%</output></label></div>
+   <div class="row" style="flex-wrap:wrap"><div class="t"><b>Звуки</b><small>Удары, лечение, монеты</small></div><button class="btn${Snd.prefs.sfx?'':' ghost'}" data-act="tglSfx">${Snd.prefs.sfx?'Вкл':'Выкл'}</button>
+    <label class="vol" style="flex-basis:100%">Громкость<input type="range" id="vol-sfx" min="0" max="100" step="5" value="${Snd.prefs.svol}" data-vol="sfx" aria-label="Громкость звуков"><output>${Snd.prefs.svol}%</output></label></div>
   </div>
   ${confirmNew?`<p><b>Начать заново?</b> Текущий герой и весь прогресс будут удалены.</p><button class="btn wide" data-act="reset">Да, начать заново</button><button class="btn ghost wide" data-act="noReset">Отмена</button>`
   :`<button class="btn ghost wide" data-act="askReset">Новая игра</button>`}
   <button class="btn wide" data-act="close">Продолжить</button>`;
 }
-ACT.tglMusic=()=>Snd.toggle('music');ACT.tglSfx=()=>Snd.toggle('sfx');
+ACT.tglMusic=()=>{Snd.toggle('music');updMusicBtn()};ACT.tglSfx=()=>Snd.toggle('sfx');
+ov.addEventListener('input',e=>{const r=e.target.closest('[data-vol]');if(!r)return;Snd.setVol(r.dataset.vol,+r.value);const out=r.parentElement.querySelector('output');if(out)out.textContent=r.value+'%'});
+function updMusicBtn(){const b=$('#nMusic'),on=Snd.prefs.music;b.classList.toggle('off',!on);b.setAttribute('aria-label',on?'Выключить музыку':'Включить музыку')}
+$('#nMusic').onclick=()=>{const on=Snd.toggle('music');updMusicBtn();toast(on?'Музыка включена. Громкость — в «Меню»':'Музыка выключена')};
 ACT.askReset=()=>{confirmNew=true};ACT.noReset=()=>{confirmNew=false};
 ACT.reset=()=>{confirmNew=false;closeSheet();try{localStorage.removeItem(SAVE_KEY)}catch(e){}boot(null);return'nore'};
 $('#nHero').onclick=()=>{if(!busy())openSheet('Герой',heroBody)};
@@ -1202,7 +1214,7 @@ function endCombat(res){
 
 /* ---------- music & sound (generated live with Web Audio, no files) ---------- */
 const Snd=(()=>{
-  const prefs={music:true,sfx:true};
+  const prefs={music:false,sfx:true,mvol:60,svol:65};
   try{Object.assign(prefs,JSON.parse(localStorage.getItem('ash-moon-audio')||'{}'))}catch(e){}
   const savePrefs=()=>{try{localStorage.setItem('ash-moon-audio',JSON.stringify(prefs))}catch(e){}};
   let ctx=null,musicBus,sfxBus,noiseBuf,timer=null,cur='explore',step=0,nextT=0,paused=false;
@@ -1217,8 +1229,8 @@ const Snd=(()=>{
     const master=ctx.createGain();master.gain.value=.85;
     const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination);
     const rev=ctx.createConvolver();rev.buffer=impulse(3.4,2.6);const rg=ctx.createGain();rg.gain.value=.32;rev.connect(rg);rg.connect(master);
-    musicBus=ctx.createGain();musicBus.gain.value=prefs.music?.5:0;musicBus.connect(master);musicBus.connect(rev);
-    sfxBus=ctx.createGain();sfxBus.gain.value=prefs.sfx?.6:0;sfxBus.connect(master);const sr=ctx.createGain();sr.gain.value=.25;sfxBus.connect(sr);sr.connect(rev);
+    musicBus=ctx.createGain();musicBus.gain.value=level('music');musicBus.connect(master);musicBus.connect(rev);
+    sfxBus=ctx.createGain();sfxBus.gain.value=level('sfx');sfxBus.connect(master);const sr=ctx.createGain();sr.gain.value=.25;sfxBus.connect(sr);sr.connect(rev);
     noiseBuf=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);const nd=noiseBuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
     for(const k in TR){gains[k]=ctx.createGain();gains[k].gain.value=k===cur?1:0;gains[k].connect(musicBus)}
     const wn=ctx.createBufferSource();wn.buffer=noiseBuf;wn.loop=true;
@@ -1307,16 +1319,19 @@ const Snd=(()=>{
     lose(t){pad(sfxBus,t,[45,48,52],2.2,.07,600);[64,60,57,52].forEach((m,i)=>bell(sfxBus,t+i*.32,m,.08,1.4))},
   };
   function sfx(name){if(!ctx||!prefs.sfx||ctx.state!=='running'||!FX[name])return;try{FX[name](ctx.currentTime+.01)}catch(e){}}
-  function toggle(kind){prefs[kind]=!prefs[kind];savePrefs();
-    if(ctx){const now=ctx.currentTime,bus=kind==='music'?musicBus:sfxBus;bus.gain.setTargetAtTime(prefs[kind]?(kind==='music'?.5:.6):0,now,.15)}
-    return prefs[kind]}
+  // loudness curve: slider 0..100 -> gain 0..1.4 (squared so the low end is usable)
+  function level(kind){if(!prefs[kind])return 0;const v=(kind==='music'?prefs.mvol:prefs.svol)/100;return v*v*1.4}
+  function apply(kind){if(!ctx)return;const bus=kind==='music'?musicBus:sfxBus;bus.gain.setTargetAtTime(level(kind),ctx.currentTime,.12)}
+  function toggle(kind){prefs[kind]=!prefs[kind];savePrefs();apply(kind);return prefs[kind]}
+  let volT;
+  function setVol(kind,v){prefs[kind==='music'?'mvol':'svol']=clamp(Math.round(v),0,100);apply(kind);clearTimeout(volT);volT=setTimeout(savePrefs,300)}
   function pause(){paused=true;if(ctx&&ctx.state==='running')ctx.suspend()}
   function resume(){paused=false;if(ctx&&ctx.state==='suspended')ctx.resume()}
   document.addEventListener('visibilitychange',()=>document.hidden?pause():resume());
   window.addEventListener('pagehide',pause);
   window.__appPause=pause;window.__appResume=resume;
   ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,init,{passive:true}));
-  return{setTrack,sfx,toggle,prefs,info:()=>({state:ctx?ctx.state:'none',track:cur,step})};
+  return{setTrack,sfx,toggle,setVol,prefs,info:()=>({state:ctx?ctx.state:'none',track:cur,step})};
 })();
 function moodNow(){
   if(!$('#combat').hidden)return C&&C.boss?'boss':'battle';
@@ -1331,7 +1346,7 @@ function boot(saved){
   if(fresh){S.eq.weapon=genItem('weapon',1,0,'rusty');S.eq.armor=genItem('armor',1,0,'jacket')}
   if(fresh||S.migrated){S.hp=maxHp();S.en=maxEn()}
   if(!S.enemies.length){for(let i=0;i<ENEMY_CAP;i++)spawnGroup(false);for(let i=0;i<14;i++)spawnGroup(false,START)}
-  anim={fx:S.x,fy:S.y,t0:0};path=[];reveal();updateHud();
+  anim={fx:S.x,fy:S.y,t0:0};path=[];reveal();updateHud();updMusicBtn();
   if(S.intro){S.intro=false;openSheet('Пепельная Луна',()=>`<p class="lore">Сто ночей луна не заходит над Долиной Пепла. Она стала серой, как зола, и в её свете из могил встают мертвецы, а волки забывают страх.</p>
    <p>Говорят, всё началось, когда в замке на севере проснулся Князь Ноктюрн. Вы — охотник, который пришёл в Серый Брод, чтобы его остановить.</p>
    <p>Нажимайте на карту, чтобы идти. Цифра над врагом — его уровень. Люди со знаком «!» дают задания. Становитесь сильнее, собирайте снаряжение и идите на север.</p>
