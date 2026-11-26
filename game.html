@@ -198,6 +198,9 @@ const SPR={
  cult:{pal:{r:'#5a2470',R:'#2e1038',E:'#ffe23a',k:'#111',o:'#ff5a1f'},rows:[
   '.....rr.....','....rrrr....','...rrrrrr...','...rkEkEr...','...rkkkkr...','..rrrrrrrr.o',
   '.rrrrRrrrrro','.r.rrRrrr...','...rrRrrr...','..rrrRrrrr..','..rrrRrrrr..','.rrrrrrrrrr.']},
+ igu:{pal:{g:'#5fa04a',G:'#3d7030',E:'#ffd23a',s:'#c9e07a',t:'#4f8c3c'},rows:[
+  '............','............','......s.s...','.....ggggg..','....gggggEg.','ttt.gggggggg',
+  '.tttGgggggG.','...tgGggGg..','....g.g..g.g','...gg.gg.gg.','............','............']},
  town:{pal:{R:'#8a2f2f',w:'#cbb89a',d:'#3a2414',y:'#ffb84d'},rows:[
   '............','..R......R..','.RRR....RRR.','RRRRR..RRRRR','.wyw....wyw.','.www.RR.www.',
   '.www.RRR....','....RRRRR...','.....wwww...','.....wdyw...','.....wdww...','............']},
@@ -226,7 +229,7 @@ function spriteURL(name,over){const key=name+(over?JSON.stringify(over):'');retu
 
 /* ---------- data ---------- */
 const LOCS=[
- {id:'brod',type:'town',name:'Серый Брод',x:8,y:40,tier:2,pool:['wolf','bandit'],lore:'Деревня у реки. Здесь ещё горят костры, и люди верят, что рассвет вернётся.'},
+ {id:'brod',type:'town',name:'Серый Брод',x:8,y:40,tier:2,pool:['wolf','bandit','igu'],lore:'Деревня у реки. Здесь ещё горят костры, и люди верят, что рассвет вернётся.'},
  {id:'holm',type:'town',name:'Вороний Холм',x:27,y:27,tier:3,pool:['skel','ghoul','bandit'],lore:'Крепость на холме. Вороны не улетают отсюда с тех пор, как луна стала пепельной.'},
  {id:'priut',type:'town',name:'Последний Приют',x:39,y:13,tier:5,pool:['cult','wraith','ghoul'],lore:'Последний оплот людей перед землями Князя. Здесь продают лучшее оружие — за любые деньги.'},
  {id:'den',type:'den',name:'Логово Пепельной Стаи',x:21,y:41,boss:'alpha'},
@@ -247,6 +250,7 @@ const TROPHY={
 const EN={
  wolf:{n:'Пепельный волк',sp:'wolf',hp:18,atk:6,def:1,dg:8,min:1,max:6},
  bandit:{n:'Разбойник',sp:'bandit',hp:24,atk:7,def:2,dg:5,min:1,max:7},
+ igu:{n:'Игуана',sp:'igu',hp:100,fixedHp:true,atk:5,def:2,dg:4,min:1,max:6,sk:'tail'},
  skel:{n:'Скелет-страж',sp:'skel',hp:28,atk:8,def:4,dg:2,min:3,max:10},
  ghoul:{n:'Упырь',sp:'ghoul',hp:36,atk:10,def:3,dg:4,min:5,max:12,sk:'rend'},
  cult:{n:'Культист Луны',sp:'cult',hp:28,atk:11,def:2,dg:5,min:6,max:12,sk:'hex'},
@@ -319,7 +323,7 @@ const xpNeed=l=>Math.round(12*l*l+20*l);
 
 function newState(){
   const s={x:8,y:40,prev:{x:8,y:40},explored:new Array(W*H).fill(0),lvl:1,xp:0,gold:40,str:3,agi:3,vit:3,wil:3,pts:0,
-    hp:1,en:1,weapon:0,armor:0,pots:3,elix:1,trophies:[],bosses:{},bounty:null,lastTown:'brod',steps:0,enemies:[],uid:1,kills:{},intro:true,won:false};
+    hp:1,en:1,weapon:0,armor:0,pots:3,elix:1,tails:0,trophies:[],bosses:{},bounty:null,lastTown:'brod',steps:0,enemies:[],uid:1,kills:{},intro:true,won:false};
   return s;
 }
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
@@ -327,7 +331,7 @@ function load(){try{const t=localStorage.getItem(SAVE_KEY);return t?JSON.parse(t
 
 /* ---------- enemies on map ---------- */
 function mkEnemy(type,L){
-  const d=EN[type],k=L-1,max=Math.round(d.hp*(1+.3*k));
+  const d=EN[type],k=L-1,max=d.fixedHp?d.hp:Math.round(d.hp*(1+.3*k));
   return{type,n:d.n,sp:d.sp,lvl:L,max,hp:max,atk:Math.round(d.atk*(1+.17*k)),def:d.def+Math.floor(L/2),dg:d.dg,sk:d.sk,
     xp:Math.round((4+d.hp/6)*(1+.5*k)),gold:Math.round((2+d.atk/2)*(1+.4*k)*rnd(.7,1.3)),turn:0};
 }
@@ -557,7 +561,9 @@ function townBody(){
   }else if(townTab==='alch'){
     h+=`<div class="rows">
     <div class="row"><div class="t"><b>Зелье крови</b><small>Лечит 45% здоровья. У вас: ${S.pots}</small></div><span class="price">15</span><button class="btn" data-act="buyP" ${S.gold<15?'disabled':''}>Купить</button></div>
-    <div class="row"><div class="t"><b>Эликсир сумрака</b><small>Возвращает 60% энергии. У вас: ${S.elix}</small></div><span class="price">22</span><button class="btn" data-act="buyE" ${S.gold<22?'disabled':''}>Купить</button></div></div>`;
+    <div class="row"><div class="t"><b>Эликсир сумрака</b><small>Возвращает 60% энергии. У вас: ${S.elix}</small></div><span class="price">22</span><button class="btn" data-act="buyE" ${S.gold<22?'disabled':''}>Купить</button></div></div>
+    <h3>Скупка трофеев</h3><div class="rows">
+    <div class="row"><div class="t"><b>Хвост игуаны</b><small>Алхимик варит из них зелья. У вас: ${S.tails||0}</small></div><span class="price">${TAIL_PRICE}</span><button class="btn" data-act="sellT" ${!S.tails?'disabled':''}>Продать</button>${S.tails>1?`<button class="btn ghost" data-act="sellAllT">Все</button>`:''}</div></div>`;
   }else{
     const b=S.bounty;
     if(!b){const t=pick(l.pool);const need=3+Math.floor(Math.random()*3);
@@ -579,6 +585,8 @@ ACT.buyW=i=>{i=+i;const w=WEAPONS[i];if(S.gold<w.p)return;S.gold-=w.p;S.gold+=Ma
 ACT.buyA=i=>{i=+i;const a=ARMORS[i];if(S.gold<a.p)return;S.gold-=a.p;S.gold+=Math.floor(ARMORS[S.armor].p/3);S.armor=i;S.hp=Math.min(maxHp(),S.hp+a.hp);toast('Новый доспех: '+a.n)};
 ACT.buyP=()=>{if(S.gold<15)return;S.gold-=15;S.pots++};
 ACT.buyE=()=>{if(S.gold<22)return;S.gold-=22;S.elix++};
+ACT.sellT=()=>{if(!S.tails)return;S.tails--;S.gold+=TAIL_PRICE;toast(`Продано: +${TAIL_PRICE} золота`)};
+ACT.sellAllT=()=>{const n=S.tails||0;if(!n)return;S.tails=0;S.gold+=n*TAIL_PRICE;toast(`Продано хвостов: ${n}, +${n*TAIL_PRICE} золота`)};
 ACT.takeB=()=>{S.bounty=S.offer;S.offer=null;toast('Заказ принят')};
 ACT.dropB=()=>{S.bounty=null};
 ACT.claimB=()=>{const b=S.bounty;S.bounty=null;S.gold+=b.gold;S.xp+=b.xp;const u=levelUps();toast(`+${b.gold} золота, +${b.xp} опыта`+(u?' · новый уровень!':''))};
@@ -595,7 +603,8 @@ function heroBody(){
    ${S.trophies.map(t=>`<div class="row"><div class="t"><b>${TROPHY[t].n}</b><small>${TROPHY[t].d}</small></div><span class="tag eq">трофей</span></div>`).join('')}</div>
   <h3>Сумка</h3><div class="rows">
    <div class="row"><div class="t"><b>Зелье крови × ${S.pots}</b><small>Лечит 45% здоровья</small></div><button class="btn" data-act="usePot" ${!S.pots||S.hp>=maxHp()?'disabled':''}>Выпить</button></div>
-   <div class="row"><div class="t"><b>Эликсир сумрака × ${S.elix}</b><small>Возвращает 60% энергии</small></div><button class="btn" data-act="useElix" ${!S.elix||S.en>=maxEn()?'disabled':''}>Выпить</button></div></div>
+   <div class="row"><div class="t"><b>Эликсир сумрака × ${S.elix}</b><small>Возвращает 60% энергии</small></div><button class="btn" data-act="useElix" ${!S.elix||S.en>=maxEn()?'disabled':''}>Выпить</button></div>
+   ${S.tails?`<div class="row"><div class="t"><b>Хвост игуаны × ${S.tails}</b><small>Трофей. Продаётся алхимику в любом поселении по ${TAIL_PRICE} золота</small></div></div>`:''}</div>
   <h3>Умения</h3><div class="rows">${SKILLS.map(s=>`<div class="row" style="${S.lvl<s.lv?'opacity:.45':''}"><div class="t"><b>${s.n}</b><small>${s.d}</small></div><span class="tag">${S.lvl<s.lv?'с ур. '+s.lv:s.en?s.en+' эн.':'бесплатно'}</span></div>`).join('')}</div>`;
 }
 ACT.stat=k=>{if(!S.pts)return;S.pts--;S[k]++;if(k==='vit')S.hp+=10;if(k==='wil')S.en+=4};
@@ -679,8 +688,17 @@ function hitFoe(f,mult,name){
   d=Math.max(1,Math.round(d-f.def));f.hp=Math.max(0,f.hp-d);
   floatOn(el,cr?d+'!':'-'+d,cr?'crit':'dmg');shakeEl(el);
   if(name)clog(`${name}: ${d}${cr?' (крит)':''} по цели ${f.n}`);
+  tailCheck(f);
   if(f.hp<=0)clog(`${f.n} повержен`);
   return d;
+}
+const TAIL_PRICE=30;
+function tailCheck(f){
+  if(f.sk!=='tail'||f.tailLost)return;
+  f.tailLost=true;S.tails=(S.tails||0)+1;C.tails=(C.tails||0)+1;
+  const el=foeEl(f);el.querySelector('img').src=spriteURL('igu',{t:'rgba(0,0,0,0)'});
+  setTimeout(()=>floatOn(el,'хвост отпал!','heal'),250);
+  clog('У игуаны отпал хвост! Вы подбираете трофей: хвост игуаны');
 }
 function act(id){
   if(!C||C.busy)return;
@@ -693,7 +711,7 @@ function act(id){
     case'rush':hitFoe(t,1.8,'Кровавый рывок');break;
     case'bite':{const d=hitFoe(t,1.2,'Вампирский укус');if(d>0)heal(Math.round(d*.6));break}
     case'whirl':C.foes.filter(f=>f.hp>0).forEach(f=>hitFoe(f,.8,null));clog('Вихрь клинков задевает всех врагов');break;
-    case'seal':{const d=Math.round((12+S.wil*4)*rnd(.9,1.1));t.hp=Math.max(0,t.hp-d);const el=foeEl(t);floatOn(el,'-'+d,'crit');shakeEl(el);clog(`Тёмная печать: ${d} по цели ${t.n}`);if(t.hp<=0)clog(`${t.n} повержен`);break}
+    case'seal':{const d=Math.round((12+S.wil*4)*rnd(.9,1.1));t.hp=Math.max(0,t.hp-d);const el=foeEl(t);floatOn(el,'-'+d,'crit');shakeEl(el);clog(`Тёмная печать: ${d} по цели ${t.n}`);tailCheck(t);if(t.hp<=0)clog(`${t.n} повержен`);break}
     case'guard':C.guard=true;S.en=Math.min(maxEn(),S.en+6);floatOn($('#cHero'),'+6 эн.','en');clog('Вы встаёте в защитную стойку');break;
     case'pot':if(!S.pots)return;S.pots--;heal(Math.round(maxHp()*.45));clog('Вы пьёте зелье крови');break;
     case'elix':if(!S.elix)return;S.elix--;S.en=Math.min(maxEn(),S.en+Math.round(maxEn()*.6));floatOn($('#cHero'),'+эн.','en');clog('Эликсир возвращает силы');break;
@@ -747,6 +765,7 @@ function endCombat(res){
   let xp=0,gold=0;const loot=[];
   for(const f of c.foes){xp+=f.xp;gold+=f.gold;S.kills[f.type]=(S.kills[f.type]||0)+(f.boss?0:1);
     if(S.bounty&&S.bounty.type===f.type&&S.bounty.have<S.bounty.need)S.bounty.have++}
+  if(c.tails)loot.push('Хвост игуаны'+(c.tails>1?' ×'+c.tails:''));
   if(!c.boss){if(Math.random()<.3){S.pots++;loot.push('Зелье крови')}if(Math.random()<.12){S.elix++;loot.push('Эликсир сумрака')}}
   if(c.group)S.enemies=S.enemies.filter(g=>g.uid!==c.group);
   if(c.boss){S.bosses[c.boss]=true;const tr=BOSS[c.boss].tro;S.trophies.push(tr);loot.push(TROPHY[tr].n)}
