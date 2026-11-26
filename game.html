@@ -52,6 +52,8 @@ input{font:inherit}
 .zone b{color:var(--bone);font-weight:400}
 #view{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.joy{position:absolute;width:112px;height:112px;margin:-56px 0 0 -56px;border-radius:50%;border:2px solid rgba(235,225,205,.28);background:radial-gradient(circle,rgba(235,225,205,.1),rgba(235,225,205,.02) 70%);pointer-events:none;z-index:5}
+.joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.55),rgba(224,56,79,.7) 60%,rgba(120,10,30,.8));box-shadow:0 0 16px rgba(224,56,79,.6)}
 #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:calc(100% - 32px);padding:8px 14px;border-radius:6px;background:#18121ee8;border:1px solid var(--line);font-size:14px;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s;z-index:40}
 #toast.on{opacity:1}
 #nav{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:linear-gradient(var(--night),var(--panel));border-top:1px solid var(--line)}
@@ -180,6 +182,30 @@ img{image-rendering:auto!important}
 @keyframes drift{to{transform:translateX(8%)}}
 .scene.shake{animation:shake .32s}
 @keyframes shake{20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
+/* weapon swings: the arm (with its weapon) is a separate layer that rotates around the shoulder */
+.hbody{position:relative}
+.hbody img{display:block}
+.harm{position:absolute;left:0;top:0;width:100%;transform-origin:59% 38%}
+.hero-fig.step{animation:step .5s ease-out}
+@keyframes step{25%{transform:translateX(-8px)}55%{transform:translateX(34px)}100%{transform:none}}
+.harm.sw-sword{animation:swSword .44s ease-out}
+@keyframes swSword{0%{transform:none}35%{transform:rotate(-78deg)}62%{transform:rotate(72deg)}100%{transform:none}}
+.harm.sw-katana{animation:swKatana .34s ease-out}
+@keyframes swKatana{0%{transform:none}25%{transform:rotate(-45deg)}55%{transform:rotate(100deg)}100%{transform:none}}
+.harm.sw-axe,.harm.sw-hammer,.harm.sw-club{animation:swHeavy .6s cubic-bezier(.5,0,.3,1)}
+@keyframes swHeavy{0%{transform:none}45%{transform:rotate(-118deg)}70%{transform:rotate(78deg)}100%{transform:none}}
+.harm.sw-mace{animation:swMace .5s ease-out}
+@keyframes swMace{0%{transform:none}40%{transform:rotate(-90deg)}66%{transform:rotate(62deg)}100%{transform:none}}
+.harm.sw-scythe{animation:swScythe .58s ease-out}
+@keyframes swScythe{0%{transform:none}40%{transform:rotate(-110deg)}70%{transform:rotate(105deg)}100%{transform:none}}
+.harm.sw-dagger{animation:swDagger .42s ease-out}
+@keyframes swDagger{0%{transform:none}20%{transform:translate(12px,-2px) rotate(22deg)}40%{transform:none}62%{transform:translate(14px,1px) rotate(26deg)}100%{transform:none}}
+.harm.sw-spear{animation:swSpear .46s ease-out}
+@keyframes swSpear{0%{transform:none}30%{transform:translateX(-8px) rotate(-22deg)}58%{transform:translate(16px,6px) rotate(66deg)}100%{transform:none}}
+.harm.sw-fist{animation:swFist .34s ease-out}
+@keyframes swFist{50%{transform:translateX(16px) rotate(18deg)}}
+.harm.sw-staff{animation:swStaff .56s ease-out}
+@keyframes swStaff{0%{transform:none}40%{transform:rotate(-38deg) translateY(-4px)}62%{transform:rotate(14deg)}100%{transform:none}}
 /* attack & defence animations */
 .hero-fig.strike{animation:strike .44s ease-out}
 @keyframes strike{0%{transform:none}28%{transform:translateX(-12px) rotate(-7deg)}55%{transform:translateX(52px) rotate(8deg)}100%{transform:none}}
@@ -293,7 +319,7 @@ img{image-rendering:auto!important}
     </div>
     <div class="zone"><span id="hZone">Окрестности Брода</span><b id="hThreat">угроза 1</b></div>
   </header>
-  <main id="view"><canvas id="cv"></canvas><div id="toast"></div></main>
+  <main id="view"><canvas id="cv"></canvas><div id="joy" class="joy" hidden><i></i></div><div id="toast"></div></main>
   <nav id="nav">
     <button id="nHero" type="button">Герой<b id="ptsDot" class="dot" hidden></b></button>
     <button id="nQuest" type="button">Задания<b id="qDot" class="dot q" hidden></b></button>
@@ -318,7 +344,7 @@ img{image-rendering:auto!important}
     <canvas class="scbg" id="sceneBg"></canvas>
     <div class="fogband"></div>
     <div class="clog" id="clog"></div>
-    <div class="fig hero-fig" id="cHero"><img id="cHeroImg" alt=""><span class="sts" id="cHeroSts"></span></div>
+    <div class="fig hero-fig" id="cHero"><div class="hbody"><img id="cHeroImg" alt=""><img id="cHeroArm" class="harm" alt=""></div><span class="sts" id="cHeroSts"></span></div>
     <div class="foes" id="foes"></div>
     <div class="banner" id="banner"></div>
   </div>
@@ -382,6 +408,7 @@ function humanoid(o){
   if(o.scale){X.translate(50,92);X.scale(o.scale,o.scale);X.translate(-50,-92)}
   if(o.float)X.translate(0,-5);
   const hu=o.hunch||0,hx=53+hu*7,hy=24+hu*8;
+  if(!o.armOnly){
   if(o.wings){const wc=o.wings;P([[46,40],[24,14,8,28],[18,34],[6,44],[20,46],[12,60],[30,52],[44,56]],lg(14,60,wc));X.globalAlpha=.7;Ln([[46,40],[8,28]],1.2,shade(wc,-.5));Ln([[46,43],[6,44]],1,shade(wc,-.5));Ln([[46,47],[12,60]],1,shade(wc,-.5));X.globalAlpha=1}
   if(o.cloak&&!o.robe)P([[41,34+hu*3],[58,34+hu*3],[63,58],[67,83],[50,87],[33,83],[36,58]],lg(34,87,o.cloak));
   if(!o.noLegs&&!o.robe){const pc=o.pants||'#3a3040';limb([[46,62],[45,76],[43,87]],bone?3:7,bone?shade(bone,-.25):shade(pc,-.28));E(44,88.5,bone?3:5,2.6,shade(o.boots||'#2a1e16',-.2))}
@@ -420,12 +447,15 @@ function humanoid(o){
     if(o.ears){P([[hx-4,hy-6],[hx-7,hy-17],[hx,hy-8]],o.ears);P([[hx+2,hy-7],[hx+5,hy-18],[hx+6.5,hy-6]],o.ears)}
     if(o.hood&&!o.dark){X.beginPath();X.ellipse(hx-1,hy-1,11,12,0,0,PI*2);X.ellipse(hx+2.5,hy+1.5,8,9,0,0,PI*2);X.fillStyle=lg(hy-13,hy+12,o.hood);X.fill('evenodd')}
   }
+  }
+  if(!o.noArm){
   const fArm=bone||(o.sleeve||o.tunic||'#4a3a30');
   limb([[59,38+hu*3],[64,47+hu*2],[69,53]],bone?2.8:5.8,fArm);
   if(o.claws)for(let i=0;i<3;i++)Ln([[70,54],[75+i,58+i*1.6]],1,'#e8e0c8');
   E(69.5,54,bone?2.4:3,bone?2.4:3,bone||skin);
   if(o.weapon)holdWeapon(o.weapon,69.5,54,o.weapon==='staff'||o.weapon==='spear'?.12:o.weapon==='club'?.55:.48,o);
-  if(o.drips)for(let i=0;i<5;i++)E(40+i*6,70+(i%3)*7,.9,1.4,o.drips);
+  }
+  if(o.drips&&!o.armOnly)for(let i=0;i<5;i++)E(40+i*6,70+(i%3)*7,.9,1.4,o.drips);
   X.restore();
 }
 function quad(o){
@@ -565,7 +595,7 @@ const DEF_PAL={
  den:{m:'#5a5560',M:'#3e3a44',E:'#ff3030'},crypt:{s:'#8b8795',S:'#5f5b69',c:'#c9c2d6',g:'#9cff6a'},castle:{s:'#4a4352',S:'#2c2733',r:'#c0182c',y:'#ffb84d'},town:{},obelisk:{},
 };
 const ART={
- hero:o=>humanoid({skin:o.s,hair:o.h,hat:o.crown?'crown':'brim',hatC:o.H,band:o.r,cloak:o.C,tunic:'#2c2434',sleeve:shade(o.C,-.12),pants:o.p,boots:'#1c1418',belt:'#5a3a22',clasp:o.r,eyes:o.crown?'#ff3050':null,fangs:!!o.crown,weapon:o.wt||null,off:o.off||null}),
+ hero:o=>humanoid({skin:o.s,hair:o.h,hat:o.crown?'crown':'brim',hatC:o.H,band:o.r,cloak:o.C,tunic:'#2c2434',sleeve:shade(o.C,-.12),pants:o.p,boots:'#1c1418',belt:'#5a3a22',clasp:o.r,eyes:o.crown?'#ff3050':null,fangs:!!o.crown,weapon:o.wt||null,off:o.off||null,noArm:o.noArm,armOnly:o.armOnly}),
  wolf:o=>quad(o),
  skel:o=>humanoid({bone:o.b,eyes:o.E,weapon:o.wpn||'sword',robe:o.robe||null,orb:o.orb,hat:o.crown?'crown':null}),
  bandit:()=>humanoid({skin:'#c99a75',hood:'#5a4c36',mask:'#1e1a18',tunic:'#7a6240',sleeve:'#6b5636',pants:'#3a3f4a',boots:'#221a14',belt:'#8a5a2b',cloak:'#3b3226',weapon:'dagger'}),
@@ -1021,7 +1051,7 @@ function spawnGroup(far,near){
     if(far&&Math.abs(S.x-x)+Math.abs(S.y-y)<8)continue;
     if(S.enemies.some(g=>g.x===x&&g.y===y))continue;
     const L=clamp(danger(x,y)+(Math.random()<.2?1:0),1,20);
-    S.enemies.push({uid:S.uid++,x,y,L,types:groupTypes(L,biomeMap[y*W+x]),stun:0});
+    S.enemies.push({uid:S.uid++,x,y,fx:x+.5,fy:y+.5,L,types:groupTypes(L,biomeMap[y*W+x]),stun:0,face:Math.random()<.5?1:-1});
     return;
   }
 }
@@ -1109,7 +1139,7 @@ function render(ts){
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.fillStyle='#050308';ctx.fillRect(0,0,vw,vh);
   if(!baseLayer)buildBase();
-  const k=Math.min(1,(ts-anim.t0)/130),ax=anim.fx+(S.x-anim.fx)*k,ay=anim.fy+(S.y-anim.fy)*k;
+  const ax=S.px-.5,ay=S.py-.5;
   ox=Math.round(vw/2-(ax+.5)*T);oy=Math.round(vh/2-(ay+.5)*T);
   const x0=Math.max(0,Math.floor(-ox/T)-1),x1=Math.min(W-1,Math.ceil((vw-ox)/T)+1),y0=Math.max(0,Math.floor(-oy/T)-1),y1=Math.min(H-1,Math.ceil((vh-oy)/T)+1);
   /* soft terrain */
@@ -1165,11 +1195,11 @@ function render(ts){
   /* enemies */
   ctx.font=`700 ${Math.round(T*.24)}px Philosopher, sans-serif`;
   for(const g of S.enemies){
-    const dx=g.x-S.x,dy=g.y-S.y;if(dx*dx+dy*dy>SIGHT*SIGHT+1)continue;
-    const px=ox+g.x*T,py=oy+g.y*T,bob=Math.sin(ts/300+g.uid)*1.2,d=EN[g.types[0]],s=T*1.05;
+    const dx=g.fx-S.px,dy=g.fy-S.py;if(dx*dx+dy*dy>SIGHT*SIGHT+1)continue;
+    const px=ox+(g.fx-.5)*T,py=oy+(g.fy-.5)*T,bob=g.mv?-Math.abs(Math.sin(ts/110+g.uid))*T*.07:Math.sin(ts/300+g.uid)*1.2,d=EN[g.types[0]],s=T*1.05;
     ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(px+T/2,py+T*.9,T*.3,T*.08,0,0,7);ctx.fill();
     ctx.globalAlpha=g.stun>0?.45:1;
-    ctx.save();ctx.translate(px+T/2,0);ctx.scale(-1,1);ctx.drawImage(getSprite(d.sp,d.pal),-s/2,py+T*.95-s+bob,s,s);ctx.restore();
+    ctx.save();ctx.translate(px+T/2,0);ctx.scale(g.face>0?1:-1,1);ctx.drawImage(getSprite(d.sp,d.pal),-s/2,py+T*.95-s+bob,s,s);ctx.restore();
     ctx.globalAlpha=1;
     const label=g.L+(g.types.length>1?'×'+g.types.length:'');
     ctx.fillStyle='rgba(10,6,14,.82)';const tw=ctx.measureText(label).width+8;ctx.fillRect(px+T/2-tw/2,py-T*.18,tw,T*.28);
@@ -1178,7 +1208,11 @@ function render(ts){
   /* hero */
   const hx=ox+ax*T,hy=oy+ay*T,hs=T*1.15;
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(hx+T/2,hy+T*.9,T*.3,T*.09,0,0,7);ctx.fill();
-  ctx.drawImage(getSprite('hero',heroPal()),hx+T/2-hs/2,hy+T*.97-hs,hs,hs);
+  dust=dust.filter(p=>ts-p.t<520);
+  for(const p of dust){const a=(ts-p.t)/520;ctx.fillStyle=`rgba(190,170,140,${.35*(1-a)})`;ctx.beginPath();ctx.ellipse(ox+p.x*T,oy+p.y*T-a*T*.15,T*(.08+a*.14),T*(.05+a*.07),0,0,7);ctx.fill()}
+  {const mv=S.moving,ph=ts/105,bob=mv?-Math.abs(Math.sin(ph))*T*.08:Math.sin(ts/600)*T*.01,tilt=mv?Math.sin(ph)*.07:0;
+   ctx.save();ctx.translate(hx+T/2,hy+T*.97);ctx.rotate(tilt);ctx.scale(S.face<0?-1:1,mv?1-Math.abs(Math.cos(ph))*.04:1);
+   ctx.drawImage(getSprite('hero',heroPal()),-hs/2,-hs+bob,hs,hs);ctx.restore()}
   /* fog of war, light around the hero, vignette */
   if(fogDirty)buildFog();
   ctx.drawImage(fogLayer,0,0,W,H,ox,oy,W*T,H*T);
@@ -1203,39 +1237,100 @@ function bfs(tx,ty){
   return out;
 }
 const busy=()=>!$('#combat').hidden||!$('#ov').hidden;
-cv.addEventListener('pointerup',e=>{
+/* ---------- free movement: floating joystick (press and drag anywhere on the map), WASD / arrows on desktop ---------- */
+const HERO_SPEED=3.4,JOY_R=46;
+let joy=null;const keys={};
+const joyEl=$('#joy'),knob=joyEl.firstElementChild;
+function stopJoy(){joy=null;joyEl.hidden=true;for(const k in keys)keys[k]=false}
+cv.addEventListener('pointerdown',e=>{
   if(busy())return;
-  const r=cv.getBoundingClientRect(),tx=Math.floor((e.clientX-r.left-ox)/T),ty=Math.floor((e.clientY-r.top-oy)/T);
-  if(tx===S.x&&ty===S.y){const l=locAt[ty*W+tx];if(l)enterLoc(l);path=[];return}
-  const p=bfs(tx,ty);
-  if(p&&p.length)path=p;else{path=[];toast(S.explored[ty*W+tx]?'Туда не пройти':'Эти земли ещё не разведаны')}
+  try{cv.setPointerCapture(e.pointerId)}catch(err){}
+  const r=view.getBoundingClientRect();
+  joy={id:e.pointerId,x0:e.clientX,y0:e.clientY,dx:0,dy:0,moved:false,t:performance.now()};
+  joyEl.style.left=(e.clientX-r.left)+'px';joyEl.style.top=(e.clientY-r.top)+'px';knob.style.transform='';joyEl.hidden=false;
 });
-document.addEventListener('keydown',e=>{
-  if(busy()||e.target.tagName==='INPUT')return;
-  const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];
-  if(!d)return;e.preventDefault();const nx=S.x+d[0],ny=S.y+d[1];
-  if(passable(nx,ny))path=[{x:nx,y:ny}];
+cv.addEventListener('pointermove',e=>{
+  if(!joy||e.pointerId!==joy.id)return;
+  let dx=e.clientX-joy.x0,dy=e.clientY-joy.y0;const L=Math.hypot(dx,dy);
+  if(L>8)joy.moved=true;
+  if(L>JOY_R){dx=dx/L*JOY_R;dy=dy/L*JOY_R}
+  joy.dx=dx;joy.dy=dy;knob.style.transform=`translate(${dx}px,${dy}px)`;
 });
-function stepTo(n){
-  anim={fx:S.x,fy:S.y,t0:performance.now()};
-  S.prev={x:S.x,y:S.y};S.x=n.x;S.y=n.y;S.steps++;reveal();
-  if(S.steps%3===0)S.hp=Math.min(maxHp(),S.hp+1);
-  let g=groupAt(S.x,S.y);
-  const l=locAt[S.y*W+S.x];
-  if(g){path=[];fightGroup(g);return}
-  if(l){path=[];updateHud();enterLoc(l);save();return}
-  moveEnemies();
-  g=groupAt(S.x,S.y);
-  if(g){path=[];fightGroup(g);return}
-  if(S.steps%10===0){
-    const nearby=S.enemies.filter(e=>Math.abs(e.x-S.x)+Math.abs(e.y-S.y)<18).length;
-    if(nearby<9)spawnGroup(true,S);else if(S.enemies.length<ENEMY_CAP)spawnGroup(true);
+function joyEnd(e){
+  if(!joy||e.pointerId!==joy.id)return;
+  const tap=!joy.moved&&performance.now()-joy.t<350;stopJoy();
+  if(tap&&!busy()){/* tap near a place opens it */
+    const r=cv.getBoundingClientRect(),wx=(e.clientX-r.left-ox)/T,wy=(e.clientY-r.top-oy)/T;
+    const l=LOCS.find(l=>Math.hypot(l.x+.5-wx,l.y+.5-wy)<.9&&Math.hypot(l.x+.5-S.px,l.y+.5-S.py)<1.8);
+    if(l)enterLoc(l);
   }
-  if(S.steps%10===0)save();
+}
+cv.addEventListener('pointerup',joyEnd);cv.addEventListener('pointercancel',joyEnd);
+const KEYMAP={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',w:'u',s:'d',a:'l',d:'r',W:'u',S:'d',A:'l',D:'r'};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||busy())return;const k=KEYMAP[e.key];if(k){keys[k]=true;e.preventDefault()}});
+document.addEventListener('keyup',e=>{const k=KEYMAP[e.key];if(k)keys[k]=false});
+/* collision: a body of radius r may stand where all four corners are on walkable tiles (enemies also keep out of places) */
+function freeAt(x,y,r,enemy){
+  for(const[cx,cy]of[[x-r,y-r],[x+r,y-r],[x-r,y+r],[x+r,y+r]]){const tx=Math.floor(cx),ty=Math.floor(cy);
+    if(!passable(tx,ty))return false;if(enemy&&locAt[ty*W+tx])return false}
+  return true;
+}
+function slide(o,kx,ky,dx,dy,r,enemy){let moved=0;
+  if(dx&&freeAt(o[kx]+dx,o[ky],r,enemy)){o[kx]+=dx;moved+=Math.abs(dx)}
+  if(dy&&freeAt(o[kx],o[ky]+dy,r,enemy)){o[ky]+=dy;moved+=Math.abs(dy)}
+  return moved}
+let dust=[],dustT=0;
+function updateWorld(dt,ts){
+  /* hero */
+  let vx=0,vy=0;
+  if(joy&&joy.moved){const L=Math.hypot(joy.dx,joy.dy);if(L>6){const m=Math.min(1,L/JOY_R);vx=joy.dx/L*m;vy=joy.dy/L*m}}
+  if(keys.l)vx-=1;if(keys.r)vx+=1;if(keys.u)vy-=1;if(keys.d)vy+=1;
+  {const L=Math.hypot(vx,vy);if(L>1){vx/=L;vy/=L}}
+  S.moving=Math.hypot(vx,vy)>.08;
+  if(S.moving){
+    if(Math.abs(vx)>.12)S.face=vx>0?1:-1;
+    const moved=slide(S,'px','py',vx*HERO_SPEED*dt,vy*HERO_SPEED*dt,.28,false);
+    S.walk=(S.walk||0)+moved;while(S.walk>=1){S.walk-=1;stepTick()}
+    if(ts-dustT>170&&moved){dustT=ts;dust.push({x:S.px,y:S.py+.32,t:ts})}
+    const tx=Math.floor(S.px),ty=Math.floor(S.py);
+    if(tx!==S.x||ty!==S.y){S.prev={x:S.x,y:S.y};S.x=tx;S.y=ty;reveal();onTile();if(busy())return}
+  }
+  /* enemies wander, and chase when they see you */
+  for(const g of S.enemies){
+    const d=Math.hypot(S.px-g.fx,S.py-g.fy);
+    if(d>20)continue;
+    if(g.stun>0){g.stun-=dt;g.mv=0;continue}
+    let tx,ty,sp;
+    if(d<4.2&&!locAt[S.y*W+S.x]){tx=S.px;ty=S.py;sp=2.15}
+    else{g.wt=(g.wt||0)-dt;if(g.tx==null||g.wt<=0||Math.hypot(g.tx-g.fx,g.ty-g.fy)<.15){g.tx=g.fx+rnd(-2.5,2.5);g.ty=g.fy+rnd(-2.5,2.5);g.wt=rnd(2.5,6)}
+      tx=g.tx;ty=g.ty;sp=.75}
+    const ex=tx-g.fx,ey=ty-g.fy,L=Math.hypot(ex,ey);
+    if(L>.05){const m=slide(g,'fx','fy',ex/L*sp*dt,ey/L*sp*dt,.26,true);g.mv=m>0?1:0;if(Math.abs(ex)>.05)g.face=ex>0?1:-1;if(!m)g.wt=0}else g.mv=0;
+    g.x=Math.floor(g.fx);g.y=Math.floor(g.fy);
+  }
+  const hit=S.enemies.find(g=>g.stun<=0&&Math.hypot(g.fx-S.px,g.fy-S.py)<.62);
+  if(hit){stopJoy();fightGroup(hit)}
+}
+function onTile(){
+  const l=locAt[S.y*W+S.x];
+  if(l&&S.inLoc!==l.id){S.inLoc=l.id;stopJoy();updateHud();enterLoc(l);save();return}
+  if(!l)S.inLoc=null;
   updateHud();
 }
+function stepTick(){
+  S.steps++;
+  if(S.steps%3===0)S.hp=Math.min(maxHp(),S.hp+1);
+  if(S.steps%10===0){
+    const nearby=S.enemies.filter(e=>Math.abs(e.fx-S.px)+Math.abs(e.fy-S.py)<18).length;
+    if(nearby<9)spawnGroup(true,S);else if(S.enemies.length<ENEMY_CAP)spawnGroup(true);
+    save();
+  }
+  updateHud();
+}
+let lastTs=0;
 function loop(ts){
-  if(path.length&&!busy()&&ts-lastStep>150){lastStep=ts;stepTo(path.shift())}
+  const dt=Math.min(.05,(ts-(lastTs||ts))/1000);lastTs=ts;
+  if(!busy())updateWorld(dt,ts);else if(joy)stopJoy();
   Snd.setTrack(moodNow());
   render(ts);requestAnimationFrame(loop);
 }
@@ -1324,7 +1419,7 @@ ACT.crDone=()=>{
     <button class="btn wide" data-act="close">В путь</button>`,{noClose:true});return'nore'}
   openSheet('Пепельная Луна',()=>`<p class="lore">Сто ночей луна не заходит над Долиной Пепла. Она стала серой, как зола, и в её свете из могил встают мертвецы, а волки забывают страх.</p>
    <p>${esc(S.name)} из рода ${LINEAGES[S.lin].n.replace('Дом ','')} пришёл в Серый Брод, чтобы остановить Князя Ноктюрна.</p>
-   <p>Нажимай на карту, чтобы идти. Цифра над врагом — его уровень. Люди со знаком «!» дают задания. В бою удар оружием бесплатен, а приёмы тратят фокус. Каждые три хода — комбо-ход.</p>
+   <p>Зажми палец на карте и веди в сторону — появится джойстик, и герой пойдёт. Цифра над врагом — его уровень. Люди со знаком «!» дают задания. В бою удар оружием бесплатен, а приёмы тратят фокус. Каждые три хода — комбо-ход.</p>
    <button class="btn wide" data-act="close">В путь</button>`,{noClose:true});
   return'nore';
 };
@@ -1611,7 +1706,7 @@ function drawMini(){
 /* menu */
 let confirmNew=false;
 function menuBody(){
-  return`<p>Нажмите на клетку карты, чтобы идти туда. Враги ходят вместе с вами: если их отряд окажется на вашей клетке, начнётся бой. Люди со знаком «!» дают задания, «?» — ждут отчёта.</p>
+  return`<p>Зажмите палец в любом месте карты и ведите в сторону — это джойстик. На компьютере можно ходить стрелками или WASD. Враги бродят сами и бросаются в погоню, если заметят вас: догнали — начинается бой. Чтобы снова зайти в место, где вы стоите, нажмите на него. Люди со знаком «!» дают задания, «?» — ждут отчёта.</p>
   <p>В бою удар оружием бесплатен, приёмы и умения тратят фокус. Каждые три хода наступает комбо-ход — несколько действий подряд. Зелья тоже тратят ход.</p>
   <div class="rows">
    <div class="row" style="flex-wrap:wrap"><div class="t"><b>Музыка</b><small>Своя тема для странствий, поселений, боёв и боссов</small></div><button class="btn${Snd.prefs.music?'':' ghost'}" data-act="tglMusic">${Snd.prefs.music?'Вкл':'Выкл'}</button>
@@ -1678,11 +1773,16 @@ function playAnim(el,cls,ms){if(!el)return;el.classList.remove(cls);void el.offs
 function fxOn(el,cls,ms=420){if(!el)return;const d=document.createElement('div');d.className=cls;el.appendChild(d);setTimeout(()=>d.remove(),ms)}
 /* hit visuals are delayed a little so they land when the swing connects; several hits in one action are staggered */
 function later(fn,extra=0){const t=150+(C?C.hitN++:0)*130+extra;setTimeout(fn,t)}
-function heroMove(kind){if(!C||C.didAnim)return;C.didAnim=true;playAnim($('#cHero'),kind,kind==='cast'?520:kind==='buffup'?620:460)}
+function heroMove(kind,hand){
+  if(!C||C.didAnim)return;C.didAnim=true;const h=$('#cHero'),arm=$('#cHeroArm');
+  if(kind==='strike'){const wt=hand==='off'||!S.eq.main?'fist':itemBase(S.eq.main).wt;playAnim(h,'step',500);playAnim(arm,'sw-'+wt,620)}
+  else if(kind==='cast'){playAnim(h,'cast',540);playAnim(arm,'sw-staff',580)}
+  else playAnim(h,kind,kind==='buffup'?620:460);
+}
 function projectile(f,col){
   const sc=$('#scene'),el=foeEl(f);if(!el)return 0;
-  const rs=sc.getBoundingClientRect(),r0=$('#cHero').getBoundingClientRect(),r1=el.getBoundingClientRect();
-  const x0=r0.left-rs.left+r0.width*.78,y0=r0.top-rs.top+r0.height*.32,x1=r1.left-rs.left+r1.width/2,y1=r1.top-rs.top+r1.height*.45;
+  const rs=sc.getBoundingClientRect(),r0=$('#cHeroImg').getBoundingClientRect(),r1=el.getBoundingClientRect(),staff=mainWT()==='staff';
+  const x0=r0.left-rs.left+r0.width*(staff?.66:.76),y0=r0.top-rs.top+r0.height*(staff?.1:.4),x1=r1.left-rs.left+r1.width/2,y1=r1.top-rs.top+r1.height*.45;
   const p=document.createElement('div');p.className='proj';p.style.setProperty('--pc',col);sc.appendChild(p);
   p.animate([{transform:`translate(${x0-12}px,${y0-12}px) scale(.5)`},{transform:`translate(${(x0+x1)/2-12}px,${Math.min(y0,y1)-30-12}px) scale(1)`},{transform:`translate(${x1-12}px,${y1-12}px) scale(1.15)`}],{duration:300,easing:'ease-in'});
   setTimeout(()=>{p.remove();const b=document.createElement('div');b.className='burst';b.style.setProperty('--pc',col);b.style.left=x1+'px';b.style.top=y1+'px';sc.appendChild(b);setTimeout(()=>b.remove(),380)},300);
@@ -1698,7 +1798,8 @@ function startCombat(foes,o){
   sceneKind=o.boss?'boss':bio===1?'snow':bio===2?'swamp':l&&l.type==='town'?'town':'';
   $('#scene').className='scene '+sceneKind;
   $('#cName').textContent=S.name;
-  $('#cHeroImg').src=spriteURL('hero',heroLook());
+  $('#cHeroImg').src=spriteURL('hero',Object.assign(heroPal(),{noArm:1}));
+  $('#cHeroArm').src=spriteURL('hero',Object.assign(heroPal(),{armOnly:1}));
   $('#foes').className='foes n'+Math.min(3,foes.length);
   $('#foes').innerHTML=foes.map((f,i)=>`<button type="button" class="foe${f.boss?' boss':''}" data-i="${i}" data-sp="${f.sp}"><span class="sts"></span><img src="${spriteURL(f.sp,f.pal)}" alt=""><span class="bar hp"><i></i></span><span class="fn">${f.n} · ${f.lvl}</span></button>`).join('');
   cEl.hidden=false;
@@ -1744,8 +1845,8 @@ function handHTML(hand){
   if(hand==='off'&&isTwo(S.eq.main))return`<div class="hand"><div class="hh"><div><b>${title}</b><span style="color:var(--muted)">занята двуручным</span></div></div></div>`;
   if(!it&&hand==='off')return`<div class="hand"><div class="hh"><div><b>${title}</b><span style="color:var(--muted)">пусто</span></div></div></div>`;
   const w=it?(it.cat==='shield'?WT.shield:WT[itemBase(it).wt]):null;
-  const dmg=w&&w.dt==='magic'?`магия ${magPow(18,4)}`:rangeTxt((hand==='main'?atkMain():atkOff())*dmgMul());
-  let btns=hand==='main'?cbtn('atk','','Удар',0,dis):'';
+  const dmg=w&&w.dt==='magic'?`шар ${magPow(8,2.5)}`:rangeTxt((hand==='main'?atkMain():atkOff())*dmgMul());
+  let btns=hand==='main'?cbtn('atk','',w&&w.dt==='magic'?'Шар':'Удар',0,dis):'';
   if(w)w.sk.forEach((s,i)=>{const c=fpCost(s.fp);btns+=cbtn('wsk',hand+'|'+i,s.n,c,dis||C.fp<c)});
   return`<div class="hand"><div class="hh">${it?`<img src="${spriteURL(itemIcon(it))}" alt="">`:''}<div><b>${title}</b><span class="r${it?it.rar:0}">${it?esc(itemName(it)):'Кулаки'}</span><span>${dmg} урона</span></div></div><div class="hbtns">${btns}</div></div>`;
 }
@@ -1784,7 +1885,7 @@ function outMul(f){
 function hitFoe(f,mult,name,o={}){
   if(!f||f.hp<=0)return 0;
   const el=foeEl(f),hand=o.hand||'main';
-  heroMove('strike');
+  heroMove('strike',hand);
   if(Math.random()*100<f.dg){later(()=>{floatOn(el,'промах','miss');playAnim(el,'evade',380);Snd.sfx('miss')});if(name)clog(`${name}: ${f.n} уклоняется`);return 0}
   const base=hand==='off'?atkOff():atkMain(),dt=o.dt||dtOf(hand);
   let d=base*mult*rnd(.88,1.12)*outMul(f);
@@ -1833,7 +1934,7 @@ function act(kind,arg){
   let t=C.foes[C.tgt];if(!t||t.hp<=0){C.tgt=C.foes.findIndex(f=>f.hp>0);t=C.foes[C.tgt]}
   const pay=c=>{if(C.fp<c)return false;C.fp-=c;if(C.firstFree&&c===0)C.firstFree=false;return true};
   switch(kind){
-    case'atk':hitFoe(t,1,'Удар');break;
+    case'atk':if(mainWT()==='staff')magic(t,magPow(8,2.5),'Магический шар');else hitFoe(t,1,'Удар');break;
     case'dual':{const c=fpCost(20);if(!pay(c))return;C.firstFree=false;hitFoe(t,1,'Удар',{hand:'main'});const t2=t.hp>0?t:alive()[0];if(t2)hitFoe(t2,1,'Левой',{hand:'off'});break}
     case'wsk':{
       const[hand,i]=arg.split('|'),it=hand==='main'?S.eq.main:S.eq.off;if(!it)return;
@@ -1931,12 +2032,14 @@ function foeAct(f){
 function levelUps(){let n=0;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;S.lvq++;S.tp+=2;n++}if(n){S.hp=maxHp();S.lvopts=null}return n}
 function endCombat(res){
   const c=C;if(!c)return;C=null;cEl.hidden=true;
-  if(res==='flee'){const g=S.enemies.find(e=>e.uid===c.group);if(g)g.stun=4;anim={fx:S.x,fy:S.y,t0:performance.now()};S.x=S.prev.x;S.y=S.prev.y;toast('Вы отступили');updateHud();save();return}
+  if(res==='flee'){const g=S.enemies.find(e=>e.uid===c.group);
+    if(g){g.stun=3.5;let ex=S.px-g.fx,ey=S.py-g.fy;const L=Math.hypot(ex,ey)||1;ex/=L;ey/=L;for(let i=0;i<12;i++)slide(S,'px','py',ex*.1,ey*.1,.28,false)}
+    S.x=Math.floor(S.px);S.y=Math.floor(S.py);toast('Вы отступили');updateHud();save();return}
   if(res==='lose'){
     Snd.sfx('lose');
     const lost=Math.floor(S.gold*.3);S.gold-=lost;const t=LOCS.find(l=>l.id===S.lastTown);
-    S.x=t.x;S.y=t.y;anim={fx:S.x,fy:S.y,t0:0};S.hp=maxHp();reveal();
-    S.enemies.forEach(g=>{if(Math.abs(g.x-S.x)+Math.abs(g.y-S.y)<6)g.stun=6});
+    S.x=t.x;S.y=t.y;S.px=t.x+.5;S.py=t.y+.5;S.inLoc=t.id;S.hp=maxHp();reveal();
+    S.enemies.forEach(g=>{if(Math.abs(g.fx-S.px)+Math.abs(g.fy-S.py)<8)g.stun=8});
     save();
     openSheet('Вы пали',()=>`<div class="big"><div class="glyph">†</div><p>Местные нашли вас у дороги и принесли в поселение «${t.name}».${lost?` Пока вы лежали без сознания, пропало ${lost} золота.`:''}</p></div><button class="btn wide" data-act="close">Подняться</button>`,{noClose:true});
     return;
@@ -2124,10 +2227,16 @@ function boot(saved){
   if(S.migrated){S.needCreate=true;S.keepProgress=true;delete S.migrated}
   if(!S.enemies||!S.enemies.length){S.enemies=[];for(let i=0;i<ENEMY_CAP;i++)spawnGroup(false);for(let i=0;i<14;i++)spawnGroup(false,START)}
   if(!has){S.hp=1}
+  /* free-movement fields (older saves stored only tile positions) */
+  if(S.px==null){S.px=S.x+.5;S.py=S.y+.5}
+  S.face=S.face||1;S.moving=false;
+  for(const g of S.enemies){if(g.fx==null){g.fx=g.x+.5;g.fy=g.y+.5}if(g.stun>10)g.stun=3;g.face=g.face||-1}
+  {const l=locAt[S.y*W+S.x];S.inLoc=l?l.id:null}
   anim={fx:S.x,fy:S.y,t0:0};path=[];reveal();
   if(S.needCreate){S.intro=false;openCreation()}
   else{S.hp=Math.max(1,Math.min(S.hp,maxHp()))}
   if(!S.needCreate)updateHud();
+  if(!S.needCreate&&!S.joyHint){S.joyHint=true;setTimeout(()=>toast('Новое управление: зажми палец на карте и веди — герой пойдёт'),600)}
   updMusicBtn();
   save();
 }
