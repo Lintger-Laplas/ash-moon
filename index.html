@@ -795,7 +795,7 @@ function aiSprite(name,o,N){
   const x=c.getContext('2d'),big=['alpha','trollking','toad','prince','lich','witch'].includes(k)?1:.92,s=N*big;
   const g=x.createRadialGradient(N/2,N*.93,0,N/2,N*.93,N*.3);g.addColorStop(0,'rgba(0,0,0,.45)');g.addColorStop(1,'rgba(0,0,0,0)');
   if(k!=='wraith'){x.fillStyle=g;x.beginPath();x.ellipse(N/2,N*.93,N*.3,N*.055,0,0,7);x.fill()}
-  x.save();if(name==='igu'&&o.t===''){x.beginPath();x.rect(N*.34,0,N,N);x.clip()}
+  x.save();if(name==='igu'&&o.t===''){x.beginPath();x.rect(0,0,N*.64,N);x.clip()}
   x.drawImage(img,(N-s)/2,N*.95-s,s,s);x.restore();
   return c;
 }
