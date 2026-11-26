@@ -1007,7 +1007,7 @@ function menuBody(){
     <label class="vol" style="flex-basis:100%">Громкость<input type="range" id="vol-sfx" min="0" max="100" step="5" value="${Snd.prefs.svol}" data-vol="sfx" aria-label="Громкость звуков"><output>${Snd.prefs.svol}%</output></label></div>
   </div>
   <h3>Музыка в игре</h3>
-  <p class="lore" style="font-size:13px;line-height:1.55">Странствия — «Dark Ambient», Alexandr Zhelanov (CC-BY 3.0)<br>Поселения — «Medieval: The Old Tower Inn», RandomMind (CC0)<br>Бои — «Battle Theme A», cynicmusic (CC0)<br>Боссы — «Darkness March», Alexandr Zhelanov (CC-BY 4.0)<br>Источник: opengameart.org. Без интернета играет встроенная музыка.</p>
+  <p class="lore" style="font-size:13px;line-height:1.55">Странствия — «Dark Ambient», Alexandr Zhelanov (CC-BY 3.0)<br>Поселения — «Medieval: The Old Tower Inn», RandomMind (CC0)<br>Бои — «Battle Theme A», cynicmusic (CC0)<br>Боссы — «Darkness March», Alexandr Zhelanov (CC-BY 4.0)<br>Источник: opengameart.org. В приложении для Android музыка встроена и играет без интернета.</p>
   ${confirmNew?`<p><b>Начать заново?</b> Текущий герой и весь прогресс будут удалены.</p><button class="btn wide" data-act="reset">Да, начать заново</button><button class="btn ghost wide" data-act="noReset">Отмена</button>`
   :`<button class="btn ghost wide" data-act="askReset">Новая игра</button>`}
   <button class="btn wide" data-act="close">Продолжить</button>`;
@@ -1222,12 +1222,15 @@ const Snd=(()=>{
   let ctx=null,musicBus,sfxBus,noiseBuf,timer=null,cur='explore',step=0,nextT=0,paused=false,wg=null;
   const gains={};
   /* recorded tracks (OpenGameArt, see credits in the menu). The synth below is only a fallback when a file can't load (offline). */
-  const MUSIC_BASE=(location.hostname.endsWith('github.io')?'':'https://lintger-laplas.github.io/ash-moon/')+'music/';
+  // where to look for the tracks, in order: inside the Android app (bundled, works offline) -> the GitHub site -> built-in synth
+  const ONLINE='https://lintger-laplas.github.io/ash-moon/music/';
+  const SRCS=location.hostname==='ashmoon.app'?['music/',ONLINE]:location.hostname.endsWith('github.io')?['music/']:[ONLINE];
   const files={},failed={};
   function audioFor(name){
     if(failed[name])return null;
-    if(!files[name]){const a=new Audio();a.preload='auto';a.loop=true;a.volume=0;
-      a.addEventListener('error',()=>{failed[name]=true;try{a.pause()}catch(e){}});a.src=MUSIC_BASE+name+'.mp3';files[name]=a}
+    if(!files[name]){const a=new Audio();a.preload='auto';a.loop=true;a.volume=0;let si=0;
+      a.addEventListener('error',()=>{si++;if(si<SRCS.length){a.src=SRCS[si]+name+'.mp3';a.load()}else{failed[name]=true;try{a.pause()}catch(e){}}});
+      a.src=SRCS[0]+name+'.mp3';files[name]=a}
     return files[name];
   }
   const fileLevel=()=>prefs.music&&!paused?Math.min(1,Math.pow(prefs.mvol/100,2)*1.2):0;
