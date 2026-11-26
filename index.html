@@ -1343,6 +1343,7 @@ actBtn.addEventListener('click',()=>{if(nearLoc&&!busy()){stopJoy();enterLoc(nea
 function stepTick(){
   S.steps++;
   if(S.steps%3===0)S.hp=Math.min(maxHp(),S.hp+1);
+  S.fp=Math.min(maxFp(),(S.fp??maxFp())+1);
   if(S.steps%10===0){
     const nearby=S.enemies.filter(e=>Math.abs(e.fx-S.px)+Math.abs(e.fy-S.py)<18).length;
     if(nearby<9)spawnGroup(true,S);else if(S.enemies.length<ENEMY_CAP)spawnGroup(true);
@@ -1372,7 +1373,8 @@ function updateHud(){
   S.hp=Math.min(S.hp,maxHp());
   $('#hLvl').textContent=S.lvl;
   $('#hHp').style.width=(S.hp/maxHp()*100)+'%';$('#hHpT').textContent=`${S.hp} / ${maxHp()}`;
-  $('#hEn').style.width='100%';$('#hEnT').textContent=`Фокус ${maxFp()}`;
+  if(S.fp==null)S.fp=maxFp();S.fp=Math.min(S.fp,maxFp());
+  $('#hEn').style.width=(S.fp/maxFp()*100)+'%';$('#hEnT').textContent=`${S.fp} / ${maxFp()} FP`;
   $('#hXp').style.width=Math.min(100,S.xp/xpNeed(S.lvl)*100)+'%';
   $('#hGold').textContent=S.gold;
   const l=locAt[S.y*W+S.x];
@@ -1435,7 +1437,7 @@ ACT.crDone=()=>{
   if(!keep){Object.assign(S,c.st);for(const[cat,id,slot]of c.gear)S.eq[slot]=genItem(cat,1,0,id);S.eq.armor=genItem('armor',1,0,'jacket')}
   else{for(const[cat,id]of c.gear)addItem(genItem(cat,Math.max(1,S.lvl-1),1,id))}
   if(S.lin==='valdrak')S.str+=1;
-  S.needCreate=false;delete S.keepProgress;S.hp=maxHp();
+  S.needCreate=false;delete S.keepProgress;S.hp=maxHp();S.fp=maxFp();
   closeSheet();
   if(keep){openSheet('Новая кровь',()=>`<p>Мир стал глубже. Теперь у тебя есть <b>родословная</b>, <b>призвание</b> и <b>кровные линии</b> — четыре ветви умений.</p>
     <p>Бой изменился: это дуэль с <b>фокусом</b> (синяя полоса). Удар оружием бесплатен, приёмы и умения тратят фокус. Каждые три хода наступает <b>комбо-ход</b>: можно сделать несколько действий подряд.</p>
@@ -1491,9 +1493,9 @@ function townBody(){
   if(people.length)tabs.push(['people','Жители'+(people.some(p=>npcMark(p))?' •':'')]);
   let h=`<div class="tabs">${tabs.map(([k,n])=>`<button class="${townTab===k?'on':''}" data-act="tab" data-arg="${k}">${n}</button>`).join('')}</div>`;
   if(townTab==='inn'){
-    const full=S.hp>=maxHp();
+    const full=S.hp>=maxHp()&&S.fp>=maxFp();
     h+=`<p class="lore">${l.lore}</p>
-    <div class="row"><div class="t"><b>Отдых у очага</b><small>Полностью восстанавливает здоровье</small></div><span class="price">${innCost()}</span><button class="btn" data-act="rest" ${full||S.gold<innCost()?'disabled':''}>${full?'Вы бодры':'Отдохнуть'}</button></div>
+    <div class="row"><div class="t"><b>Отдых у очага</b><small>Полностью восстанавливает здоровье и фокус</small></div><span class="price">${innCost()}</span><button class="btn" data-act="rest" ${full||S.gold<innCost()?'disabled':''}>${full?'Вы бодры':'Отдохнуть'}</button></div>
     <p class="lore">Трактирщик шепчет: «Цифра над врагом — его уровень. Красная — беги, жёлтая — будь осторожен. А у кого над головой «!» — тому нужна помощь».</p>`;
   }else if(townTab==='shop'){
     h+=`<p class="lore">Товар меняется при каждом твоём приходе. Синие — редкие, фиолетовые — эпические вещи с особыми свойствами.</p>${shopRows(l.id,1)}`;
@@ -1524,7 +1526,7 @@ function townBody(){
   return h+`<button class="btn ghost wide" data-act="close">Выйти из поселения</button>`;
 }
 ACT.tab=k=>{townTab=k};
-ACT.rest=()=>{if(S.gold<innCost())return;S.gold-=innCost();S.hp=maxHp();toast('Вы отдохнули и набрались сил')};
+ACT.rest=()=>{if(S.gold<innCost())return;S.gold-=innCost();S.hp=maxHp();S.fp=maxFp();toast('Вы отдохнули: здоровье и фокус восстановлены')};
 ACT.sharpen=s=>{const it=S.eq[s];if(!it||it.up>=5)return;const c=Math.round(itemPrice(it)*.4*(it.up+1));if(S.gold<c)return;S.gold-=c;it.up++;Snd.sfx('coin');toast(`${itemName(it)} заточен`)};
 ACT.buyP=()=>{if(S.gold<15)return;S.gold-=15;S.pots++;Snd.sfx('coin')};
 ACT.buyE=()=>{if(S.gold<20)return;S.gold-=20;S.fpots++;Snd.sfx('coin')};
@@ -1618,7 +1620,7 @@ function heroBody(){
   }else{
     h+=`<div class="rows">
      <div class="row"><div class="t"><b>Зелье здоровья × ${S.pots}</b><small>Лечит 40% здоровья</small></div><button class="btn" data-act="usePot" ${!S.pots||S.hp>=maxHp()?'disabled':''}>Выпить</button></div>
-     <div class="row"><div class="t"><b>Зелье фокуса × ${S.fpots}</b><small>Пьётся только в бою: возвращает 50% фокуса</small></div></div>
+     <div class="row"><div class="t"><b>Зелье фокуса × ${S.fpots}</b><small>Возвращает 50% фокуса (${S.fp} / ${maxFp()})</small></div><button class="btn" data-act="useFp" ${!S.fpots||S.fp>=maxFp()?'disabled':''}>Выпить</button></div>
      ${S.tails?`<div class="row"><div class="t"><b>Хвост игуаны × ${S.tails}</b><small>Трофей. Продаётся алхимику по ${TAIL_PRICE} золота, нужен травнице Ольхе</small></div></div>`:''}
      ${Object.keys(S.q).filter(q=>QUESTS[q].k==='collect'&&S.q[q].st==='active').map(q=>`<div class="row"><div class="t"><b>${QUESTS[q].item} × ${S.q[q].have}</b><small>Для задания «${QUESTS[q].n}»</small></div></div>`).join('')}</div>`;
   }
@@ -1665,6 +1667,7 @@ ACT.equip=a=>{
 ACT.unequip=s=>{const it=S.eq[s];if(!it)return;if(S.inv.length>=INV_MAX){toast('Рюкзак полон');return}S.inv.push(it);S.eq[s]=null;sel=null;S.hp=Math.min(S.hp,maxHp())};
 ACT.sellIt=u=>{const i=S.inv.findIndex(it=>it.uid===+u);if(i<0)return;const g=sellPrice(S.inv[i]);S.gold+=g;S.inv.splice(i,1);sel=null;Snd.sfx('coin')};
 ACT.sellJunk=()=>{let g=0;S.inv=S.inv.filter(it=>{if(it.rar===0){g+=sellPrice(it);return false}return true});sel=null;if(g){S.gold+=g;Snd.sfx('coin');toast(`Продано на ${g} золота`)}};
+ACT.useFp=()=>{if(!S.fpots)return;S.fpots--;S.fp=Math.min(maxFp(),S.fp+Math.round(maxFp()*.5*(1+.15*tr('alchemy'))))};
 ACT.usePot=()=>{if(!S.pots)return;S.pots--;S.hp=Math.min(maxHp(),S.hp+Math.round(maxHp()*.4*(1+.15*tr('alchemy'))))};
 
 /* quests sheet */
@@ -1818,7 +1821,9 @@ function fightGroup(g){startCombat(g.types.map(t=>mkEnemy(t,g.L)),{group:g.uid,t
 function startCombat(foes,o){
   path=[];
   foes=foes.slice().sort((a,b)=>(a.boss?1:0)-(b.boss?1:0));
-  const fp0=Math.min(maxFp(),Math.round(maxFp()*.4)+10*tr('startfp'));
+  /* focus carries over between fights like health; "Готовность" adds a little on top */
+  if(S.fp==null)S.fp=maxFp();
+  const fp0=Math.min(maxFp(),S.fp+10*tr('startfp'));
   const bio=biomeMap[S.y*W+S.x],l=locAt[S.y*W+S.x];
   C={foes,cur:0,tgt:0,log:[],busy:false,boss:o.boss||null,group:o.group||null,turn:1,moons:0,combo:false,acts:0,fp:fp0,cd:{},pb:{},tails:0,tab:'weap',
      firstFree:lin('mirel'),firstHit:tr('ambush')>0,undying:tr('undying')>0,fleeFail:false,hitN:0,didAnim:false,impactT:0};
@@ -2096,16 +2101,17 @@ function foeAct(f){
   },HIT);
   return HIT+(retri?700:200);
 }
-function levelUps(){let n=0;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;S.lvq++;S.tp+=2;n++}if(n){S.hp=maxHp();S.lvopts=null}return n}
+function levelUps(){let n=0;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;S.lvq++;S.tp+=2;n++}if(n){S.hp=maxHp();S.fp=maxFp();S.lvopts=null}return n}
 function endCombat(res){
   const c=C;if(!c)return;C=null;cEl.hidden=true;
+  S.fp=Math.max(0,Math.min(maxFp(),Math.round(c.fp)));
   if(res==='flee'){const g=S.enemies.find(e=>e.uid===c.group);
     if(g){g.stun=3.5;let ex=S.px-g.fx,ey=S.py-g.fy;const L=Math.hypot(ex,ey)||1;ex/=L;ey/=L;for(let i=0;i<12;i++)slide(S,'px','py',ex*.1,ey*.1,.28,false)}
     S.x=Math.floor(S.px);S.y=Math.floor(S.py);toast('Вы отступили');updateHud();save();return}
   if(res==='lose'){
     Snd.sfx('lose');
     const lost=Math.floor(S.gold*.3);S.gold-=lost;const t=LOCS.find(l=>l.id===S.lastTown);
-    S.x=t.x;S.y=t.y;S.px=t.x+.5;S.py=t.y+.5;S.inLoc=t.id;S.hp=maxHp();reveal();
+    S.x=t.x;S.y=t.y;S.px=t.x+.5;S.py=t.y+.5;S.inLoc=t.id;S.hp=maxHp();S.fp=maxFp();reveal();
     S.enemies.forEach(g=>{if(Math.abs(g.fx-S.px)+Math.abs(g.fy-S.py)<8)g.stun=8});
     save();
     openSheet('Вы пали',()=>`<div class="big"><div class="glyph">†</div><p>Местные нашли вас у дороги и принесли в поселение «${t.name}».${lost?` Пока вы лежали без сознания, пропало ${lost} золота.`:''}</p></div><button class="btn wide" data-act="close">Подняться</button>`,{noClose:true});
