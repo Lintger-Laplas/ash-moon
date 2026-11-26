@@ -54,6 +54,12 @@ input{font:inherit}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .joy{position:absolute;width:112px;height:112px;margin:-56px 0 0 -56px;border-radius:50%;border:2px solid rgba(235,225,205,.28);background:radial-gradient(circle,rgba(235,225,205,.1),rgba(235,225,205,.02) 70%);pointer-events:none;z-index:5}
 .joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.55),rgba(224,56,79,.7) 60%,rgba(120,10,30,.8));box-shadow:0 0 16px rgba(224,56,79,.6)}
+.actbtn{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;display:grid;justify-items:center;gap:1px;min-width:170px;max-width:calc(100% - 32px);padding:10px 22px;border-radius:12px;border:1px solid #c9a24a;background:linear-gradient(#5a1420ee,#2a0a12ee);color:#fff;box-shadow:0 6px 20px #000c,0 0 18px #e0384f55;animation:actin .25s ease-out}
+.actbtn b{font-family:var(--f-display);font-weight:400;font-size:17px;letter-spacing:.06em;color:#ffe2a8}
+.actbtn span{font-size:12.5px;color:#e8d8c8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.actbtn.npc{border-color:#8fdf6a;background:linear-gradient(#24401ced,#10200cee)}
+.actbtn.shrine{border-color:#8fd0ff;background:linear-gradient(#1a3450ee,#0c1828ee)}
+@keyframes actin{from{opacity:0;transform:translate(-50%,10px)}}
 #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:calc(100% - 32px);padding:8px 14px;border-radius:6px;background:#18121ee8;border:1px solid var(--line);font-size:14px;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s;z-index:40}
 #toast.on{opacity:1}
 #nav{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:linear-gradient(var(--night),var(--panel));border-top:1px solid var(--line)}
@@ -251,6 +257,14 @@ img{image-rendering:auto!important}
 .foes.n2 .foe+.foe,.foes.n3 .foe+.foe{margin-left:-5vw}
 .foes.n3 .foe:nth-child(2){margin-bottom:9%;z-index:-1}
 .foe.boss{width:min(46vw,220px)!important}
+.foe.wait,.foe.gone{display:none}
+.foe.enter{animation:fenter .6s ease-out}
+@keyframes fenter{from{transform:translateX(60%);opacity:0}}
+.queue{position:absolute;right:8px;top:58px;display:grid;gap:4px;justify-items:end;z-index:2}
+.queue small{font-size:11px;color:#e8dccbcc;text-shadow:0 1px 2px #000}
+.queue span{position:relative;width:46px;height:46px;border-radius:50%;border:1px solid rgba(235,225,205,.35);background:radial-gradient(circle,#2a1a24,#120c16);overflow:hidden;display:grid;place-items:center}
+.queue img{width:120%;transform:scaleX(-1);opacity:.85}
+.queue b{position:absolute;bottom:1px;right:4px;font-size:10px;color:#fff;text-shadow:0 1px 2px #000}
 .foe img{width:100%;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 8px 6px #000a);animation:idle 2.6s ease-in-out infinite}
 .foe:nth-child(2) img{animation-delay:-.9s}.foe:nth-child(3) img{animation-delay:-1.7s}
 .foe[data-sp="wraith"] img,.foe[data-sp="vspawn"] img{animation:float 3.2s ease-in-out infinite}
@@ -319,7 +333,7 @@ img{image-rendering:auto!important}
     </div>
     <div class="zone"><span id="hZone">Окрестности Брода</span><b id="hThreat">угроза 1</b></div>
   </header>
-  <main id="view"><canvas id="cv"></canvas><div id="joy" class="joy" hidden><i></i></div><div id="toast"></div></main>
+  <main id="view"><canvas id="cv"></canvas><div id="joy" class="joy" hidden><i></i></div><button id="actBtn" class="actbtn" type="button" hidden></button><div id="toast"></div></main>
   <nav id="nav">
     <button id="nHero" type="button">Герой<b id="ptsDot" class="dot" hidden></b></button>
     <button id="nQuest" type="button">Задания<b id="qDot" class="dot q" hidden></b></button>
@@ -346,6 +360,7 @@ img{image-rendering:auto!important}
     <div class="clog" id="clog"></div>
     <div class="fig hero-fig" id="cHero"><div class="hbody"><img id="cHeroImg" alt=""><img id="cHeroArm" class="harm" alt=""></div><span class="sts" id="cHeroSts"></span></div>
     <div class="foes" id="foes"></div>
+    <div class="queue" id="queue"></div>
     <div class="banner" id="banner"></div>
   </div>
   <div class="cpanel" id="cpanel"></div>
@@ -828,7 +843,7 @@ const ABIL={
  parry:{n:'Парирование',fp:20,cd:3,d:'Следующая атака врага отражается с уроном ×1,5',self:1,run(){buff('parry',2);clog('Вы готовы парировать')}},
  flurry:{n:'Шквал',fp:40,cd:3,d:'4 удара по ×0,6',run(t){for(let i=0;i<4;i++){const x=t.hp>0?t:alive()[0];if(x)hitFoe(x,.6,null)}clog('Шквал ударов')}},
  storm:{n:'Багровая буря',fp:45,cd:3,d:'Магия 10 + Воля×3 по всем и поджог',run(){alive().forEach(f=>{magic(f,magPow(10,3),null);addSt(f,'burn',3,4+st('wil'))});clog('Багровая буря')}},
- feast:{n:'Пир крови',fp:35,cd:4,d:'Магия 12 + Воля×4, лечит на весь урон',run(t){const d=magic(t,magPow(12,4),'Пир крови');heal(d)}},
+ feast:{n:'Пир крови',fp:35,cd:4,d:'Магия 12 + Воля×4, лечит на весь урон',run(t){magic(t,magPow(12,4),'Пир крови',d=>heal(d))}},
  plague:{n:'Чума',fp:30,cd:3,d:'Сильный яд всем врагам на 4 хода',run(){alive().forEach(f=>addSt(f,'pois',4,6+st('wil')*2));clog('Чума расползается')}},
  shackles:{n:'Оковы',fp:40,cd:5,d:'Оглушает цель на 2 хода',run(t){addSt(t,'stun',2);clog(`${t.n} скован`)}},
  execute:{n:'Казнь',fp:40,cd:3,d:'Урон ×2,5 по цели ниже 35% здоровья, иначе ×1,3',run(t){hitFoe(t,t.hp<t.max*.35?2.5:1.3,'Казнь')}},
@@ -1258,12 +1273,7 @@ cv.addEventListener('pointermove',e=>{
 });
 function joyEnd(e){
   if(!joy||e.pointerId!==joy.id)return;
-  const tap=!joy.moved&&performance.now()-joy.t<350;stopJoy();
-  if(tap&&!busy()){/* tap near a place opens it */
-    const r=cv.getBoundingClientRect(),wx=(e.clientX-r.left-ox)/T,wy=(e.clientY-r.top-oy)/T;
-    const l=LOCS.find(l=>Math.hypot(l.x+.5-wx,l.y+.5-wy)<.9&&Math.hypot(l.x+.5-S.px,l.y+.5-S.py)<1.8);
-    if(l)enterLoc(l);
-  }
+  stopJoy();
 }
 cv.addEventListener('pointerup',joyEnd);cv.addEventListener('pointercancel',joyEnd);
 const KEYMAP={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',w:'u',s:'d',a:'l',d:'r',W:'u',S:'d',A:'l',D:'r'};
@@ -1300,10 +1310,12 @@ function updateWorld(dt,ts){
     const d=Math.hypot(S.px-g.fx,S.py-g.fy);
     if(d>20)continue;
     if(g.stun>0){g.stun-=dt;g.mv=0;continue}
-    let tx,ty,sp;
-    if(d<4.2&&!locAt[S.y*W+S.x]){tx=S.px;ty=S.py;sp=2.15}
-    else{g.wt=(g.wt||0)-dt;if(g.tx==null||g.wt<=0||Math.hypot(g.tx-g.fx,g.ty-g.fy)<.15){g.tx=g.fx+rnd(-2.5,2.5);g.ty=g.fy+rnd(-2.5,2.5);g.wt=rnd(2.5,6)}
-      tx=g.tx;ty=g.ty;sp=.75}
+    /* each group roams around its own home point and never chases the hero */
+    if(g.hx==null){g.hx=g.fx;g.hy=g.fy}
+    g.wt=(g.wt||0)-dt;
+    if(g.tx==null||g.wt<=0||Math.hypot(g.tx-g.fx,g.ty-g.fy)<.15){const a=Math.random()*PI*2,r=Math.random()*2.6;g.tx=g.hx+Math.cos(a)*r;g.ty=g.hy+Math.sin(a)*r;g.wt=rnd(2.5,6);g.rest=Math.random()<.4?rnd(1,3):0}
+    if(g.rest>0){g.rest-=dt;g.mv=0;continue}
+    const tx=g.tx,ty=g.ty,sp=.7;
     const ex=tx-g.fx,ey=ty-g.fy,L=Math.hypot(ex,ey);
     if(L>.05){const m=slide(g,'fx','fy',ex/L*sp*dt,ey/L*sp*dt,.26,true);g.mv=m>0?1:0;if(Math.abs(ex)>.05)g.face=ex>0?1:-1;if(!m)g.wt=0}else g.mv=0;
     g.x=Math.floor(g.fx);g.y=Math.floor(g.fy);
@@ -1311,12 +1323,23 @@ function updateWorld(dt,ts){
   const hit=S.enemies.find(g=>g.stun<=0&&Math.hypot(g.fx-S.px,g.fy-S.py)<.62);
   if(hit){stopJoy();fightGroup(hit)}
 }
-function onTile(){
-  const l=locAt[S.y*W+S.x];
-  if(l&&S.inLoc!==l.id){S.inLoc=l.id;stopJoy();updateHud();enterLoc(l);save();return}
-  if(!l)S.inLoc=null;
-  updateHud();
+function onTile(){updateHud()}
+/* places are entered only through the action button that appears when you stand next to them */
+let nearLoc=null;const actBtn=$('#actBtn');
+function locAction(l){
+  if(l.type==='town')return['Войти',l.name];
+  if(l.type==='npc')return['Говорить',NPCS[l.npc].n];
+  if(l.type==='shrine')return[S.shr[l.id]?'Осмотреть':'Коснуться',l.name];
+  return[S.bosses[l.boss]?'Осмотреть':'Войти',l.name];
 }
+function updateNear(){
+  let best=null,bd=1.35;
+  for(const l of LOCS){const d=Math.hypot(l.x+.5-S.px,l.y+.5-S.py);if(d<bd&&S.explored[l.y*W+l.x]){bd=d;best=l}}
+  if(best===nearLoc)return;nearLoc=best;
+  if(!best){actBtn.hidden=true;return}
+  const[a,n]=locAction(best);actBtn.innerHTML=`<b>${a}</b><span>${esc(n)}</span>`;actBtn.className='actbtn '+best.type;actBtn.hidden=false;
+}
+actBtn.addEventListener('click',()=>{if(nearLoc&&!busy()){stopJoy();enterLoc(nearLoc);save()}});
 function stepTick(){
   S.steps++;
   if(S.steps%3===0)S.hp=Math.min(maxHp(),S.hp+1);
@@ -1330,7 +1353,8 @@ function stepTick(){
 let lastTs=0;
 function loop(ts){
   const dt=Math.min(.05,(ts-(lastTs||ts))/1000);lastTs=ts;
-  if(!busy())updateWorld(dt,ts);else if(joy)stopJoy();
+  if(!busy()){updateWorld(dt,ts);updateNear()}else if(joy)stopJoy();
+  actBtn.style.visibility=busy()?'hidden':'visible';
   Snd.setTrack(moodNow());
   render(ts);requestAnimationFrame(loop);
 }
@@ -1789,25 +1813,27 @@ function projectile(f,col){
   return 300;
 }
 function fightGroup(g){startCombat(g.types.map(t=>mkEnemy(t,g.L)),{group:g.uid,title:g.types.length>1?'Засада':'Схватка'})}
+/* Enemies come out one at a time: C.cur is the one fighting, the rest wait in the queue.
+   Every hit is resolved when it lands (after the swing or when the spell reaches the target). */
 function startCombat(foes,o){
   path=[];
+  foes=foes.slice().sort((a,b)=>(a.boss?1:0)-(b.boss?1:0));
   const fp0=Math.min(maxFp(),Math.round(maxFp()*.4)+10*tr('startfp'));
   const bio=biomeMap[S.y*W+S.x],l=locAt[S.y*W+S.x];
-  C={foes,tgt:0,log:[],busy:false,boss:o.boss||null,group:o.group||null,turn:1,moons:0,combo:false,acts:0,fp:fp0,cd:{},pb:{},tails:0,tab:'weap',
-     firstFree:lin('mirel'),firstHit:tr('ambush')>0,undying:tr('undying')>0,fleeFail:false,hitN:0,didAnim:false};
+  C={foes,cur:0,tgt:0,log:[],busy:false,boss:o.boss||null,group:o.group||null,turn:1,moons:0,combo:false,acts:0,fp:fp0,cd:{},pb:{},tails:0,tab:'weap',
+     firstFree:lin('mirel'),firstHit:tr('ambush')>0,undying:tr('undying')>0,fleeFail:false,hitN:0,didAnim:false,impactT:0};
   sceneKind=o.boss?'boss':bio===1?'snow':bio===2?'swamp':l&&l.type==='town'?'town':'';
   $('#scene').className='scene '+sceneKind;
   $('#cName').textContent=S.name;
   $('#cHeroImg').src=spriteURL('hero',Object.assign(heroPal(),{noArm:1}));
   $('#cHeroArm').src=spriteURL('hero',Object.assign(heroPal(),{armOnly:1}));
-  $('#foes').className='foes n'+Math.min(3,foes.length);
+  $('#foes').className='foes n1';
   $('#foes').innerHTML=foes.map((f,i)=>`<button type="button" class="foe${f.boss?' boss':''}" data-i="${i}" data-sp="${f.sp}"><span class="sts"></span><img src="${spriteURL(f.sp,f.pal)}" alt=""><span class="bar hp"><i></i></span><span class="fn">${f.n} · ${f.lvl}</span></button>`).join('');
   cEl.hidden=false;
   paintScene(sceneKind);
-  clog(foes.length>1?`На вас напали: ${foes.map(f=>f.n).join(', ')}`:`${foes[0].n} преграждает путь`);
+  clog(foes.length>1?`Противников: ${foes.length}. Они выходят по одному`:`${foes[0].n} преграждает путь`);
   updCombat();
 }
-$('#foes').addEventListener('click',e=>{const b=e.target.closest('.foe');if(!b||!C)return;const i=+b.dataset.i;if(C.foes[i].hp>0){C.tgt=i;updCombat()}});
 $('#cpanel').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b||b.disabled||!C)return;
   if(b.dataset.c==='tab'){C.tab=b.dataset.a;updCombat();return}
   act(b.dataset.c,b.dataset.a)});
@@ -1817,16 +1843,27 @@ function stsHTML(s){const o=[];if(!s)return'';
   if(s.bleed)o.push(`<i>кровь ${s.bleed.t}</i>`);if(s.burn)o.push(`<i class="burn">огонь ${s.burn.t}</i>`);if(s.pois)o.push(`<i class="pois">яд ${s.pois.t}</i>`);
   if(s.stun)o.push('<i class="stun">оглушён</i>');if(s.weak)o.push(`<i class="weak">слаб ${s.weak}</i>`);if(s.mark)o.push(`<i class="buff">метка ${s.mark}</i>`);if(s.sunder)o.push(`<i class="weak">броня− ${s.sunder}</i>`);return o.join('')}
 const fpCost=base=>C.firstFree?0:Math.round(base*(1-.08*tr('cold')));
-const alive=()=>C.foes.filter(f=>f.hp>0);
+const cur=()=>C.foes[C.cur];
+const alive=()=>{const f=cur();return f&&f.hp>0?[f]:[]};
+const allDead=()=>!C.foes.some(f=>f.hp>0);
+function bringNext(){
+  const i=C.foes.findIndex((f,k)=>k>C.cur&&f.hp>0);if(i<0)return false;
+  C.cur=C.tgt=i;const f=cur();updCombat();
+  const el=foeEl(f);playAnim(el,'enter',600);banner(f.boss?f.n:'Следующий!');clog(`В бой вступает: ${f.n}`);
+  return true;
+}
 function updCombat(){
   if(!C)return;
-  const t=C.foes[C.tgt]&&C.foes[C.tgt].hp>0?C.foes[C.tgt]:alive()[0];
+  const t=cur();
   $('#cTurn').textContent=C.combo?'КОМБО':'Ход '+C.turn;
   const need=tr('rhythm')?2:3;
   $('#moons').innerHTML=Array.from({length:need},(_,i)=>`<i class="moon ${C.combo||i<C.moons?'f':''}"></i>`).join('');
   document.querySelectorAll('.foe').forEach((el,i)=>{const f=C.foes[i];
-    el.classList.toggle('sel',f===t);el.classList.toggle('dead',f.hp<=0);
+    el.classList.toggle('sel',i===C.cur&&f.hp>0);el.classList.toggle('dead',f.hp<=0);
+    el.classList.toggle('wait',i>C.cur);el.classList.toggle('gone',i<C.cur);
     el.querySelector('i').style.width=(f.hp/f.max*100)+'%';el.querySelector('.sts').innerHTML=f.hp>0?stsHTML(f.st):''});
+  const waiting=C.foes.filter((f,i)=>i>C.cur&&f.hp>0);
+  $('#queue').innerHTML=waiting.length?`<small>Ждут: ${waiting.length}</small>${waiting.map(f=>`<span><img src="${spriteURL(f.sp,f.pal)}" alt=""><b>${f.lvl}</b></span>`).join('')}`:'';
   if(t){$('#tName').textContent=`${t.n} · ${t.lvl}`;$('#tHp').style.width=(t.hp/t.max*100)+'%';$('#tHpT').textContent=`${t.hp} / ${t.max}`;$('#tSts').innerHTML=stsHTML(t.st)}
   S.hp=Math.min(S.hp,maxHp());C.fp=clamp(C.fp,0,maxFp());
   $('#cHp').style.width=(S.hp/maxHp()*100)+'%';$('#cHpT').textContent=`${S.hp} / ${maxHp()}`;
@@ -1869,7 +1906,7 @@ const fleeCh=()=>Math.min(95,45+st('agi')*2+(tr('escape')?25:0));
 function floatOn(el,txt,cls){if(!el)return;const s=document.createElement('span');s.className='fl '+cls;s.textContent=txt;el.appendChild(s);setTimeout(()=>s.remove(),950)}
 function shakeEl(el){if(!el)return;el.classList.remove('hit');void el.offsetWidth;el.classList.add('hit')}
 const foeEl=f=>document.querySelector(`.foe[data-i="${C.foes.indexOf(f)}"]`);
-function heal(n,quiet){n=Math.round(n*(lin('osvet')?1.1:1));if(n<=0)return;if(!quiet)Snd.sfx('heal');const before=S.hp;S.hp=Math.min(maxHp(),S.hp+n);if(S.hp>before)floatOn($('#cHero'),'+'+(S.hp-before),'heal')}
+function heal(n,quiet){if(!C&&!quiet)return;n=Math.round(n*(lin('osvet')?1.1:1));if(n<=0)return;if(!quiet)Snd.sfx('heal');const before=S.hp;S.hp=Math.min(maxHp(),S.hp+n);if(S.hp>before)floatOn($('#cHero'),'+'+(S.hp-before),'heal')}
 function addSt(f,k,t,d){if(f.hp<=0)return;if(['stun','weak','mark','sunder'].includes(k)){f.st[k]=Math.max(f.st[k]||0,t)}else{const c=f.st[k];f.st[k]={t:Math.max(t,c?c.t:0),d:Math.max(d||1,c?c.d:0)}}}
 function buff(k,t){C.pb[k]=Math.max(C.pb[k]||0,t)}
 function outMul(f){
@@ -1882,44 +1919,58 @@ function outMul(f){
   if(f.st.mark)m*=1.25;if(f.st.stun&&tr('dominate'))m*=1.3;
   return m;
 }
+/* schedule something at the moment of impact and remember when the last impact happens */
+function atImpact(ms,fn){if(!C)return;C.impactT=Math.max(C.impactT||0,ms);setTimeout(()=>{if(C)fn()},ms)}
+function impactDelay(){return 170+(C.hitN++)*140}
 function hitFoe(f,mult,name,o={}){
   if(!f||f.hp<=0)return 0;
   const el=foeEl(f),hand=o.hand||'main';
   heroMove('strike',hand);
-  if(Math.random()*100<f.dg){later(()=>{floatOn(el,'промах','miss');playAnim(el,'evade',380);Snd.sfx('miss')});if(name)clog(`${name}: ${f.n} уклоняется`);return 0}
+  const when=impactDelay();
+  if(Math.random()*100<f.dg){atImpact(when,()=>{floatOn(el,'промах','miss');playAnim(el,'evade',380);Snd.sfx('miss');if(name)clog(`${name}: ${f.n} уклоняется`)});return 0}
   const base=hand==='off'?atkOff():atkMain(),dt=o.dt||dtOf(hand);
   let d=base*mult*rnd(.88,1.12)*outMul(f);
   const cr=Math.random()*100<crit()+(o.crit||0)||C.pb.ambush||C.firstHit;C.pb.ambush=0;C.firstHit=false;
   if(cr)d*=1.75+.1*tr('heavy');
   let df=f.def*(f.st.sunder?.5:1);if(dt==='pierce'||o.pen)df*=.6;
-  d=Math.max(1,Math.round(d-df));f.hp=Math.max(0,f.hp-d);
-  {const dd=d,crr=cr,blood=f.sp==='skel'||f.sp==='garg'||f.sp==='wraith'?'#e8e4d8':'#c0182c';
-   later(()=>{Snd.sfx(crr?'crit':'hit');floatOn(el,crr?dd+'!':'-'+dd,crr?'crit':'dmg');fxOn(el,'slash'+(crr?' red':''),320);playAnim(el,'ouch',360);flash(el);sparks(el,blood,crr?12:7);if(crr)shakeScene()})}
-  if(name)clog(`${name}: ${d}${cr?' (крит)':''} → ${f.n}`);
-  tailCheck(f);
-  if(f.hp>0){
-    if(Math.random()*100<gs('bleed')+6*tr('bleedn')+(dt==='slash'?8:0)+(o.bleed?100:0))addSt(f,'bleed',3,Math.round(base*.25+2));
-    if(Math.random()*100<gs('stun')+4*tr('daze')+(dt==='blunt'?6:0)+(o.stun||0))addSt(f,'stun',1);
-    if(Math.random()*100<6*tr('venom')+(C.pb.venom?100:0)+(o.pois?100:0))addSt(f,'pois',3,Math.round(base*.2+3));
-    if(Math.random()*100<gs('burn'))addSt(f,'burn',3,Math.round(base*.3));
-    if(o.sunder)addSt(f,'sunder',3);
-  }
-  if(C.pb.venom&&--C.pb.venom<=0)delete C.pb.venom;
-  const v=gs('vamp');if(v)heal(d*v/100,true);
-  if(f.hp<=0)foeDied(f);
+  d=Math.max(1,Math.round(d-df));
+  const venom=!!C.pb.venom;if(C.pb.venom&&--C.pb.venom<=0)delete C.pb.venom;
+  const blood=f.sp==='skel'||f.sp==='garg'||f.sp==='wraith'?'#e8e4d8':'#c0182c';
+  atImpact(when,()=>{
+    if(f.hp<=0)return;
+    f.hp=Math.max(0,f.hp-d);
+    Snd.sfx(cr?'crit':'hit');floatOn(el,cr?d+'!':'-'+d,cr?'crit':'dmg');fxOn(el,'slash'+(cr?' red':''),320);playAnim(el,'ouch',360);flash(el);sparks(el,blood,cr?12:7);if(cr)shakeScene();
+    if(name)clog(`${name}: ${d}${cr?' (крит)':''} → ${f.n}`);
+    tailCheck(f);
+    if(f.hp>0){
+      if(Math.random()*100<gs('bleed')+6*tr('bleedn')+(dt==='slash'?8:0)+(o.bleed?100:0))addSt(f,'bleed',3,Math.round(base*.25+2));
+      if(Math.random()*100<gs('stun')+4*tr('daze')+(dt==='blunt'?6:0)+(o.stun||0))addSt(f,'stun',1);
+      if(Math.random()*100<6*tr('venom')+(venom?100:0)+(o.pois?100:0))addSt(f,'pois',3,Math.round(base*.2+3));
+      if(Math.random()*100<gs('burn'))addSt(f,'burn',3,Math.round(base*.3));
+      if(o.sunder)addSt(f,'sunder',3);
+    }
+    const v=gs('vamp');if(v)heal(d*v/100,true);
+    if(o.onHit)o.onHit(d);
+    if(f.hp<=0)foeDied(f);
+    updCombat();
+  });
   return d;
 }
-function magic(f,pow,name){
+function magic(f,pow,name,onHit){
   if(!f||f.hp<=0)return 0;
   const cr=Math.random()*100<crit()/2;
   const d=Math.max(1,Math.round(pow*rnd(.9,1.1)*(f.st.mark?1.25:1)*(f.st.stun&&tr('dominate')?1.3:1)*(cr?1.5:1)));
-  f.hp=Math.max(0,f.hp-d);const el=foeEl(f);
+  const el=foeEl(f);
   heroMove('cast');
-  {const col=st('wil')>0&&C.pb.frenzy?'#ff8a3a':'#ff4a6a',dl=(C.hitN++)*110;setTimeout(()=>{const fl=projectile(f,col);setTimeout(()=>{floatOn(el,cr?d+'!':'-'+d,'crit');playAnim(el,'ouch',360);flash(el);sparks(el,'#ff6a8a',9);Snd.sfx('crit')},fl)},120+dl)}
-  if(name)clog(`${name}: ${d} → ${f.n}`);tailCheck(f);if(f.hp<=0)foeDied(f);return d;
+  const launch=140+(C.hitN++)*120;
+  C.impactT=Math.max(C.impactT||0,launch+300);
+  setTimeout(()=>{if(!C)return;const fl=projectile(f,'#ff4a6a');
+    setTimeout(()=>{if(!C||f.hp<=0)return;
+      f.hp=Math.max(0,f.hp-d);floatOn(el,cr?d+'!':'-'+d,'crit');playAnim(el,'ouch',360);flash(el);sparks(el,'#ff6a8a',9);Snd.sfx('crit');
+      if(name)clog(`${name}: ${d} → ${f.n}`);tailCheck(f);if(onHit)onHit(d);if(f.hp<=0)foeDied(f);updCombat()},fl)},launch);
+  return d;
 }
 function foeDied(f){clog(`${f.n} повержен`);if(tr('harvest'))heal(maxHp()*.15,true)}
-function lunge(){const h=$('#cHero');h.style.transform='translateX(18px)';setTimeout(()=>h.style.transform='',140)}
 function tailCheck(f){
   if(f.sk!=='tail'||f.tailLost)return;
   f.tailLost=true;S.tails=(S.tails||0)+1;C.tails++;
@@ -1929,21 +1980,20 @@ function tailCheck(f){
 }
 function act(kind,arg){
   if(!C||C.busy)return;
-  C.didAnim=false;C.hitN=0;
+  C.didAnim=false;C.hitN=0;C.impactT=0;
   if(kind==='hp'||kind==='fpp'||(kind==='ab'&&ABIL[arg]&&ABIL[arg].self))heroMove('buffup');
-  let t=C.foes[C.tgt];if(!t||t.hp<=0){C.tgt=C.foes.findIndex(f=>f.hp>0);t=C.foes[C.tgt]}
-  const pay=c=>{if(C.fp<c)return false;C.fp-=c;if(C.firstFree&&c===0)C.firstFree=false;return true};
+  const t=cur();if(!t||t.hp<=0)return;
+  const pay=c=>{if(C.fp<c)return false;C.fp-=c;return true};
   switch(kind){
     case'atk':if(mainWT()==='staff')magic(t,magPow(8,2.5),'Магический шар');else hitFoe(t,1,'Удар');break;
-    case'dual':{const c=fpCost(20);if(!pay(c))return;C.firstFree=false;hitFoe(t,1,'Удар',{hand:'main'});const t2=t.hp>0?t:alive()[0];if(t2)hitFoe(t2,1,'Левой',{hand:'off'});break}
+    case'dual':{const c=fpCost(20);if(!pay(c))return;C.firstFree=false;hitFoe(t,1,'Удар',{hand:'main'});hitFoe(t,1,'Левой',{hand:'off'});break}
     case'wsk':{
       const[hand,i]=arg.split('|'),it=hand==='main'?S.eq.main:S.eq.off;if(!it)return;
       const w=it.cat==='shield'?WT.shield:WT[itemBase(it).wt],s=w.sk[+i],c=fpCost(s.fp);
       if(!pay(c))return;C.firstFree=false;
       if(s.stance){buff('stance',1);heroMove('brace');fxOn($('#cHero'),'shieldfx',420);clog('Вы прикрываетесь щитом');break}
-      if(s.mag){const pow=magPow(s.mag[0],s.mag[1]);const d=magic(t,pow,s.n);if(s.drain)heal(d*.6);break}
-      const targets=s.all?alive():[t];
-      for(const f of targets)for(let k=0;k<(s.hits||1);k++){const x=f.hp>0?f:null;if(x)hitFoe(x,s.m,k?null:s.n,{hand,crit:s.crit,pen:s.pen,stun:s.stun,bleed:s.bleed,pois:s.pois,sunder:s.sunder})}
+      if(s.mag){magic(t,magPow(s.mag[0],s.mag[1]),s.n,s.drain?d=>heal(d*.6):null);break}
+      for(let k=0;k<(s.hits||1)*(s.all?1:1);k++)hitFoe(t,s.m,k?null:s.n,{hand,crit:s.crit,pen:s.pen,stun:s.stun,bleed:s.bleed,pois:s.pois,sunder:s.sunder});
       break}
     case'ab':{const A=ABIL[arg];if(!A||(C.cd[arg]||0)>0)return;const c=fpCost(A.fp);if(!pay(c))return;C.firstFree=false;A.run(t);if(A.cd)C.cd[arg]=A.cd+1;break}
     case'hp':if(!S.pots)return;S.pots--;heal(maxHp()*.4*(1+.15*tr('alchemy')));C.pois=null;clog('Вы пьёте зелье здоровья');break;
@@ -1953,33 +2003,43 @@ function act(kind,arg){
     case'flee':if(C.boss)return;if(Math.random()*100<fleeCh()){endCombat('flee');return}clog('Сбежать не удалось!');if(!tr('escape'))C.fleeFail=true;C.combo=false;C.acts=0;break;
     default:return;
   }
-  if(!alive().length){C.busy=true;updCombat();setTimeout(()=>endCombat('win'),750);return}
-  if(C.foes[C.tgt].hp<=0)C.tgt=C.foes.findIndex(f=>f.hp>0);
-  if(C.combo){C.acts--;if(C.acts>0&&kind!=='endc'){updCombat();return}C.combo=false}
+  C.busy=true;updCombat();
+  const wait=Math.max(C.impactT||0,C.didAnim?420:0)+140;
+  setTimeout(()=>afterAction(kind),wait);
+}
+function afterAction(kind){
+  if(!C)return;
+  if(allDead()){updCombat();setTimeout(()=>endCombat('win'),550);return}
+  let entered=false;
+  if(cur().hp<=0)entered=bringNext();
+  if(C.combo){C.acts--;if(C.acts>0&&kind!=='endc'){C.busy=false;updCombat();return}C.combo=false}
+  if(entered){setTimeout(newTurn,650);return}
   enemyPhase();
 }
 function enemyPhase(){
   C.busy=true;updCombat();
-  const list=alive();let i=0;
-  const next=()=>{
+  setTimeout(()=>{
     if(!C)return;
-    if(i>=list.length){newTurn();return}
-    const f=list[i++];
-    if(f.hp>0){
-      const el=foeEl(f);
-      for(const k of['bleed','burn','pois']){const s=f.st[k];if(!s)continue;f.hp=Math.max(0,f.hp-s.d);floatOn(el,'-'+s.d,'dot');if(--s.t<=0)delete f.st[k];if(f.hp<=0){clog(`${f.n} погибает от ${k==='bleed'?'кровотечения':k==='burn'?'огня':'яда'}`);if(tr('harvest'))heal(maxHp()*.15,true);break}}
-      if(f.hp>0){if(f.st.stun){if(--f.st.stun<=0)delete f.st.stun;floatOn(el,'оглушён','miss');clog(`${f.n} пропускает ход`)}else foeAct(f);
-        for(const k of['weak','mark','sunder'])if(f.st[k]&&--f.st[k]<=0)delete f.st[k]}
-    }
-    if(S.hp<=0&&C.undying){S.hp=1;C.undying=false;clog('Бессмертие! Вы удерживаетесь на краю');floatOn($('#cHero'),'бессмертие','heal')}
-    updCombat();
-    if(S.hp<=0){C.busy=true;setTimeout(()=>endCombat('lose'),800);return}
-    if(!alive().length){setTimeout(()=>endCombat('win'),600);return}
-    setTimeout(next,460);
-  };
-  setTimeout(next,360);
+    const f=cur();if(!f||f.hp<=0){newTurn();return}
+    const el=foeEl(f);
+    for(const k of['bleed','burn','pois']){const s=f.st[k];if(!s)continue;f.hp=Math.max(0,f.hp-s.d);floatOn(el,'-'+s.d,'dot');if(--s.t<=0)delete f.st[k];if(f.hp<=0){clog(`${f.n} погибает от ${k==='bleed'?'кровотечения':k==='burn'?'огня':'яда'}`);if(tr('harvest'))heal(maxHp()*.15,true);break}}
+    if(f.hp<=0){updCombat();if(allDead()){setTimeout(()=>endCombat('win'),600);return}setTimeout(()=>{bringNext();setTimeout(newTurn,500)},450);return}
+    let wait=250;
+    if(f.st.stun){if(--f.st.stun<=0)delete f.st.stun;floatOn(el,'оглушён','miss');clog(`${f.n} пропускает ход`)}else wait=foeAct(f);
+    for(const k of['weak','mark','sunder'])if(f.st[k]&&--f.st[k]<=0)delete f.st[k];
+    setTimeout(()=>{
+      if(!C)return;
+      if(S.hp<=0&&C.undying){S.hp=1;C.undying=false;clog('Бессмертие! Вы удерживаетесь на краю');floatOn($('#cHero'),'бессмертие','heal')}
+      updCombat();
+      if(S.hp<=0){C.busy=true;setTimeout(()=>endCombat('lose'),700);return}
+      if(allDead()){setTimeout(()=>endCombat('win'),550);return}
+      if(cur().hp<=0){setTimeout(()=>{bringNext();setTimeout(newTurn,500)},300);return}
+      newTurn();
+    },wait+180);
+  },380);
 }
 function newTurn(){
+  if(!C)return;
   C.turn++;C.fleeFail=false;delete C.pb.stance;
   C.fp=Math.min(maxFp(),C.fp+fpRegen());
   for(const k in C.cd)if(C.cd[k]>0)C.cd[k]--;
@@ -1991,15 +2051,16 @@ function newTurn(){
   if(C.moons>=(tr('rhythm')?2:3)){C.combo=true;C.acts=3+tr('flow');C.moons=0;banner('Комбо-ход!');Snd.sfx('level')}
   C.busy=false;updCombat();
 }
+/* the enemy's move; returns how long (ms) until everything it caused has landed */
 function foeAct(f){
   f.turn++;
-  const el=foeEl(f);C.hitN=0;C.didAnim=true;
+  const el=foeEl(f);C.hitN=0;C.didAnim=true;C.impactT=0;
   const BEASTY=['wolf','spider','igu','toad','ghoul'].includes(f.sp);
   let mult=1,ignore=false,verb='атакует',enDrain=0;
   if(C.fleeFail){mult=1.5;verb='бьёт в спину';C.fleeFail=false}
   const a=f.atk*(f.st.weak?.7-.1*tr('suppress'):1);
-  if(f.sk==='howl'&&f.turn%3===0){f.atk=Math.round(f.atk*1.2);flash(el);sparks(el,'#ffcf3a',8);clog(`${f.n} воет — его атака растёт`);return}
-  if(f.sk==='prince'&&!f.moon&&f.hp<f.max/2){f.moon=true;f.atk=Math.round(f.atk*1.25);flash(el);sparks(el,'#ff3050',14);shakeScene();clog('Луна алеет: Князь впадает в ярость');return}
+  if(f.sk==='howl'&&f.turn%3===0){f.atk=Math.round(f.atk*1.2);flash(el);sparks(el,'#ffcf3a',8);clog(`${f.n} воет — его атака растёт`);return 400}
+  if(f.sk==='prince'&&!f.moon&&f.hp<f.max/2){f.moon=true;f.atk=Math.round(f.atk*1.25);flash(el);sparks(el,'#ff3050',14);shakeScene();clog('Луна алеет: Князь впадает в ярость');return 500}
   playAnim(el,'lunge',460);
   if(f.sk==='rend'&&Math.random()<.25){mult*=1.5;verb='рвёт когтями'}
   if(f.sk==='hex'&&Math.random()<.35){mult*=.9;ignore=true;verb='насылает порчу'}
@@ -2009,25 +2070,31 @@ function foeAct(f){
   if(f.sk==='qspit'&&f.turn%3===0){mult*=1.7;ignore=true;verb='плюёт кислотой'}
   if(f.sk==='witch'&&f.turn%3===0){mult*=1.6;ignore=true;enDrain=14;verb='насылает ледяную бурю'}
   if(f.sk==='drain'||f.sk==='prince')verb='пьёт вашу кровь';
-  const hero=$('#cHero');
-  if(C.pb.parry){delete C.pb.parry;setTimeout(()=>{floatOn(hero,'парирование','en');fxOn(hero,'shieldfx gold',420);playAnim(hero,'brace',380);sparks(hero,'#ffd27a',10);Snd.sfx('crit')},220);clog(`Вы парируете атаку: ${f.n}`);C.didAnim=false;C.hitN=2;hitFoe(f,1.5,'Ответный удар');return}
-  if(!ignore&&Math.random()*100<dodge()){setTimeout(()=>{floatOn(hero,'уклон','miss');playAnim(hero,'dodge',420);Snd.sfx('miss')},200);clog(`${f.n} промахивается`);if(lin('ratven'))C.pb.ambush=1;return}
+  const hero=$('#cHero'),HIT=240;
+  if(C.pb.parry){delete C.pb.parry;setTimeout(()=>{if(!C)return;floatOn(hero,'парирование','en');fxOn(hero,'shieldfx gold',420);playAnim(hero,'brace',380);sparks(hero,'#ffd27a',10);Snd.sfx('crit');clog(`Вы парируете атаку: ${f.n}`)},HIT);
+    C.didAnim=false;C.hitN=3;hitFoe(f,1.5,'Ответный удар');return Math.max(C.impactT,HIT)+200}
+  if(!ignore&&Math.random()*100<dodge()){setTimeout(()=>{if(!C)return;floatOn(hero,'уклон','miss');playAnim(hero,'dodge',420);Snd.sfx('miss');clog(`${f.n} промахивается`)},HIT-20);if(lin('ratven'))C.pb.ambush=1;return HIT+250}
   let d=a*mult*rnd(.85,1.15);if(!ignore)d-=def();d=Math.max(1,d);
   let blocked=false;if(!ignore&&Math.random()*100<block()){d*=.5;blocked=true}
   if(C.pb.stance)d*=.3;if(C.pb.wall)d*=.4;if(C.pb.frenzy)d*=1.3;
   d=Math.max(1,Math.round(d));
-  S.hp=Math.max(0,S.hp-d);
-  {const dd=d,bl=blocked,guard=!!(C.pb.stance||C.pb.wall),big=mult>=1.5,magicHit=ignore;
-   setTimeout(()=>{floatOn(hero,(bl?'блок −':'-')+dd,'hurt');
-     if(bl||guard){fxOn(hero,'shieldfx',420);playAnim(hero,'brace',380);sparks(hero,'#d9e4ff',6)}
-     else{playAnim(hero,'ouch',360);fxOn(hero,magicHit?'shieldfx gold':BEASTY?'claw':'slash red',380);sparks(hero,'#c0182c',7)}
-     if(big)shakeScene();Snd.sfx('hurt')},220)}
-  if(enDrain)C.fp=Math.max(0,C.fp-enDrain);
-  if(f.sk==='drain'||f.sk==='prince')f.hp=Math.min(f.max,f.hp+Math.round(d*.5));
-  if((f.sk==='poison'&&Math.random()<.3)||(f.sk==='qspit'&&Math.random()<.4)){C.pois={t:3,d:Math.max(2,Math.round(a*.3))};clog('Вы отравлены')}
-  clog(`${f.n} ${verb}: −${d}${blocked?' (блок)':''}${enDrain?`, −${enDrain} FP`:''}`);
-  const th=gs('thorns');if(th&&S.hp>0&&f.hp>0){const r=Math.max(1,Math.round(d*th/100));f.hp=Math.max(0,f.hp-r);floatOn(el,'-'+r,'dot');if(f.hp<=0)foeDied(f)}
-  if(C.pb.retri&&f.hp>0&&S.hp>0)hitFoe(f,.6,'Возмездие');
+  const guard=!!(C.pb.stance||C.pb.wall),big=mult>=1.5,retri=!!C.pb.retri;
+  setTimeout(()=>{
+    if(!C)return;
+    S.hp=Math.max(0,S.hp-d);
+    floatOn(hero,(blocked?'блок −':'-')+d,'hurt');
+    if(blocked||guard){fxOn(hero,'shieldfx',420);playAnim(hero,'brace',380);sparks(hero,'#d9e4ff',6)}
+    else{playAnim(hero,'ouch',360);fxOn(hero,ignore?'shieldfx gold':BEASTY?'claw':'slash red',380);sparks(hero,'#c0182c',7)}
+    if(big)shakeScene();Snd.sfx('hurt');
+    if(enDrain)C.fp=Math.max(0,C.fp-enDrain);
+    if(f.sk==='drain'||f.sk==='prince')f.hp=Math.min(f.max,f.hp+Math.round(d*.5));
+    if((f.sk==='poison'&&Math.random()<.3)||(f.sk==='qspit'&&Math.random()<.4)){C.pois={t:3,d:Math.max(2,Math.round(a*.3))};clog('Вы отравлены')}
+    clog(`${f.n} ${verb}: −${d}${blocked?' (блок)':''}${enDrain?`, −${enDrain} FP`:''}`);
+    const th=gs('thorns');if(th&&S.hp>0&&f.hp>0){const r=Math.max(1,Math.round(d*th/100));f.hp=Math.max(0,f.hp-r);floatOn(el,'-'+r,'dot');if(f.hp<=0)foeDied(f)}
+    if(retri&&f.hp>0&&S.hp>0){C.didAnim=false;C.hitN=0;hitFoe(f,.6,'Возмездие')}
+    updCombat();
+  },HIT);
+  return HIT+(retri?700:200);
 }
 function levelUps(){let n=0;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;S.lvq++;S.tp+=2;n++}if(n){S.hp=maxHp();S.lvopts=null}return n}
 function endCombat(res){
