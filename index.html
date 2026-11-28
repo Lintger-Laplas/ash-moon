@@ -353,7 +353,11 @@ img{image-rendering:auto!important}
 .gs .fl.g.hurt{color:#ff3a4a}
 .drop{position:absolute;left:0;top:0;width:4px;height:4px;margin:-2px;border-radius:50%;pointer-events:none;z-index:3}
 .stain{position:absolute;left:0;top:0;width:6px;height:6px;margin:-3px;border-radius:50%;pointer-events:none;z-index:0;filter:brightness(.6)}
-.soul{position:absolute;left:0;top:0;pointer-events:none;z-index:2;filter:brightness(0) invert(1) blur(3px) drop-shadow(0 0 10px #bfe0ff);mix-blend-mode:screen}
+.soul{position:absolute;left:0;top:0;pointer-events:none;z-index:2;filter:brightness(0) invert(1) blur(3px) drop-shadow(0 0 10px #bfe0ff)}
+.lite .soul{filter:brightness(0) invert(1) blur(2px)}.lite2 .soul{filter:brightness(0) invert(1)}
+.lite .foe:not(.flash) img,.lite .fig:not(.guarded):not(.raged):not(.smoky) img{filter:none}
+.lite .foe.boss img{filter:drop-shadow(0 0 10px #e0384f88)}.lite2 .foe.boss img{filter:none}
+.lite2 .slash{filter:none}.lite2 .afterimg{filter:brightness(0) invert(1)!important}
 .afterimg{position:absolute;left:2px;top:2px;width:calc(100% - 4px)!important;pointer-events:none;animation:none!important;filter:brightness(0) invert(1) blur(2px)!important}
 .bossfl{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:3;background:radial-gradient(circle at 70% 60%,#e0384f88,#e0384f00 70%)}
 .cwipe{position:fixed;inset:0;z-index:26;pointer-events:none;overflow:hidden}
@@ -442,13 +446,31 @@ img{image-rendering:auto!important}
 "use strict";
 /* GSAP layer for combat and interface motion. Every call returns true when GSAP handled it,
    false when GSAP is missing (or the system asks for reduced motion) so the old CSS animation runs instead. */
+/* graphics quality: level 0 full, 1 lighter, 2 economy. In "auto" the game watches the frame rate and steps down when the phone can't keep up. */
+const PERF=(()=>{
+  let mode='auto';try{mode=localStorage.getItem('ash-moon-gfx')||'auto'}catch(e){}
+  const P={mode,lvl:0};
+  P.q=()=>[1,.6,.35][P.lvl];
+  P.dprCap=()=>[2,1.5,1][P.lvl];
+  P.set=l=>{l=Math.max(0,Math.min(2,l));if(l===P.lvl&&P._init)return;P._init=1;P.lvl=l;
+    document.documentElement.classList.toggle('lite',l>=1);document.documentElement.classList.toggle('lite2',l>=2);
+    window.dispatchEvent(new Event('gfx'))};
+  P.setMode=m=>{P.mode=m;try{localStorage.setItem('ash-moon-gfx',m)}catch(e){}acc=0;n=0;P.set(m==='lo'?2:m==='hi'?0:P.start)};
+  P.start=(navigator.deviceMemory&&navigator.deviceMemory<=2)||(navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=2)?1:0;
+  let acc=0,n=0,cool=0;
+  P.frame=dt=>{if(P.mode!=='auto'||P.lvl>=2||dt<=0||dt>.25)return;acc+=dt;n++;
+    if(n<120)return;const avg=acc/n;acc=0;n=0;
+    if(cool>0){cool--;return}
+    if(avg>1/38){P.set(P.lvl+1);cool=2}};
+  P.set(mode==='lo'?2:mode==='hi'?0:P.start);
+  return P})();
 const FX=(()=>{
   const G=window.gsap,ok=!!G&&!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
   const F={ok};
   const names=['float','bar','resetBars','shake','crit','hurt','foeHit','lunge','evade','enter','die','banner','moons','combatIn','sheetIn','sheetOut','toast','title','titleMenu'];
   if(!ok){names.forEach(k=>F[k]=()=>false);return F}
   document.documentElement.classList.add('gs');
-  const R=(a,b)=>a+Math.random()*(b-a),$i=id=>document.getElementById(id);
+  const R=(a,b)=>a+Math.random()*(b-a),$i=id=>document.getElementById(id),N=n=>Math.max(1,Math.round(n*PERF.q()));
   const layer=cls=>{const s=$i('scene');let v=s.querySelector('.'+cls);if(!v){v=document.createElement('div');v.className=cls;s.appendChild(v)}return v};
   const bit=(cls,parent)=>{const p=document.createElement('i');p.className=cls;(parent||$i('scene')).appendChild(p);return p};
   function rectIn(el,sel){const s=$i('scene'),rs=s.getBoundingClientRect(),r=(el.querySelector(sel||'img')||el).getBoundingClientRect();return{s,x:r.left-rs.left,y:r.top-rs.top,w:r.width,h:r.height}}
@@ -496,7 +518,7 @@ const FX=(()=>{
     blood($i('cHero'),'#a8101f',big?14:8,-1,'.hbody');return true};
 
   /* blood / bone chips: thrown out, arc, fall to the ground and leave a fading stain */
-  function blood(el,col,n,dir,sel){if(!el)return;const r=rectIn(el,sel),gy=r.y+r.h*.97;
+  function blood(el,col,n,dir,sel){if(!el)return;const r=rectIn(el,sel),gy=r.y+r.h*.97;n=N(n);
     for(let i=0;i<n;i++){const p=bit('drop');p.style.background=col;
       const x0=r.x+r.w*R(.35,.65),y0=r.y+r.h*R(.3,.55),vx=dir*R(20,110),up=R(15,60),sz=R(.6,1.6),t=R(.45,.75);
       G.set(p,{x:x0,y:y0,scale:sz});
@@ -529,13 +551,13 @@ const FX=(()=>{
   F.enter=(el,boss)=>{if(!el)return true;const img=el.querySelector('img');
     G.fromTo(el,{xPercent:boss?0:80,y:boss?-60:0,opacity:0},{xPercent:0,y:0,opacity:1,duration:boss?.5:.6,ease:boss?'power4.in':'power3.out',clearProps:'opacity,transform',
       onComplete:()=>{dust(el,boss?22:10);if(boss){F.shake(1.6);G.fromTo(layer('bossfl'),{opacity:.8},{opacity:0,duration:.6})}}});
-    if(img)G.fromTo(img,{filter:'brightness(0) drop-shadow(0 0 10px #e0384f)'},{filter:'brightness(1) drop-shadow(0 0 0px #e0384f00)',duration:.5,delay:boss?.5:.45,ease:'power1.inOut',clearProps:'filter'});
+    if(img)G.fromTo(img,PERF.lvl>1?{filter:'brightness(0)'}:{filter:'brightness(0) drop-shadow(0 0 10px #e0384f)'},{filter:PERF.lvl>1?'brightness(1)':'brightness(1) drop-shadow(0 0 0px #e0384f00)',duration:.5,delay:boss?.5:.45,ease:'power1.inOut',clearProps:'filter'});
     return true};
   /* death: white flash, the body tips back and sinks into ash, a pale soul rises out of it */
   F.die=(el,boss)=>{if(!el)return true;const img=el.querySelector('img');if(!img)return true;
     G.set(el,{transformOrigin:'50% 100%'});
     G.timeline().to(img,{filter:'brightness(3.5) saturate(0)',duration:.07})
-      .to(img,{filter:'brightness(.35) grayscale(1) blur(2px)',duration:boss?1.4:.8,ease:'power1.in'})
+      .to(img,{filter:PERF.lvl>1?'brightness(.35) grayscale(1)':'brightness(.35) grayscale(1) blur(2px)',duration:boss?1.4:.8,ease:'power1.in'})
       .to(el,{y:14,rotation:6,scaleY:.86,duration:boss?1.4:.8,ease:'power2.in'},.07);
     const r=rectIn(el),soul=img.cloneNode();soul.className='soul';r.s.appendChild(soul);
     G.set(soul,{x:r.x,y:r.y,width:r.w,height:r.h,scaleX:-1});
@@ -543,12 +565,12 @@ const FX=(()=>{
     ash(el,boss?60:26);
     if(boss){F.shake(1.4);F.crit()}
     return true};
-  function ash(el,n){const r=rectIn(el);
-    for(let i=0;i<n;i++){const ember=Math.random()<.35,p=bit('ash');p.style.background=ember?'#ff7a3a':'#4a4046';if(ember)p.style.boxShadow='0 0 6px #ff7a3a';
+  function ash(el,n){const r=rectIn(el);n=N(n);
+    for(let i=0;i<n;i++){const ember=Math.random()<.35,p=bit('ash');p.style.background=ember?'#ff7a3a':'#4a4046';if(ember&&!PERF.lvl)p.style.boxShadow='0 0 6px #ff7a3a';
       const x=r.x+R(.2,.8)*r.w,y=r.y+R(.25,.95)*r.h;
       G.set(p,{x,y,scale:R(.6,1.6)});
       G.to(p,{x:x+R(-20,70),y:y-R(40,130),rotation:R(-180,180),opacity:0,scale:.2,duration:R(1,1.9),delay:R(0,.4),ease:'power1.out',onComplete:()=>p.remove()})}}
-  function dust(el,n){const r=rectIn(el);
+  function dust(el,n){const r=rectIn(el);n=N(n);
     for(let i=0;i<n;i++){const p=bit('ash dust'),side=i%2?1:-1;
       const x=r.x+r.w*R(.3,.7),y=r.y+r.h*.95;
       G.set(p,{x,y,scale:R(1,2.2),opacity:.6});
@@ -556,9 +578,9 @@ const FX=(()=>{
 
   /* ---------- banner ---------- */
   F.banner=(b,t,kind)=>{b.textContent=t;b.classList.remove('on');b.dataset.k=kind||'';G.killTweensOf(b);G.set(b,{xPercent:-50,yPercent:-50,y:0});
-    G.timeline().fromTo(b,{opacity:0,scale:1.8,letterSpacing:'.6em',filter:'blur(8px)'},{opacity:1,scale:1,letterSpacing:'.06em',filter:'blur(0px)',duration:.38,ease:'power4.out'})
+    const bl=PERF.lvl<2;G.timeline().fromTo(b,{opacity:0,scale:1.8,letterSpacing:'.6em',filter:bl?'blur(8px)':'none'},{opacity:1,scale:1,letterSpacing:'.06em',filter:bl?'blur(0px)':'none',duration:.38,ease:'power4.out'})
       .fromTo(b,{textShadow:'0 0 60px #fff'},{textShadow:kind==='boss'?'0 0 24px #e0384f':'0 0 20px #d9a441',duration:.5},.3)
-      .to(b,{opacity:0,y:-22,filter:'blur(4px)',duration:.4,ease:'power1.in'},kind==='boss'?'+=1':'+=.6');return true};
+      .to(b,{opacity:0,y:-22,filter:bl?'blur(4px)':'none',duration:.4,ease:'power1.in'},kind==='boss'?'+=1':'+=.6');return true};
 
   F.moons=(box,prev,now,combo)=>{const m=box.children;
     for(let i=prev;i<now&&i<m.length;i++)G.fromTo(m[i],{scale:.1},{scale:1,duration:.55,ease:'back.out(4)',delay:(i-prev)*.08,clearProps:'transform'});
@@ -624,9 +646,9 @@ const FX=(()=>{
   F.title=()=>{G.fromTo('#title .logo span',{y:-30,opacity:0,filter:'blur(8px)'},{y:0,opacity:1,filter:'blur(0px)',duration:1,stagger:.25,ease:'power3.out',clearProps:'filter,transform'});
     G.fromTo('#title .tsub',{opacity:0,y:8},{opacity:1,y:0,duration:.8,delay:.6,clearProps:'all'});
     F.titleMenu(.8);
-    if(!F._breath){F._breath=G.to('#title .logo',{scale:1.025,duration:2.8,ease:'sine.inOut',yoyo:true,repeat:-1});
-      const flick=()=>{const t=$i('title');if(t&&!t.hidden)G.to('#title .logo',{opacity:R(.82,1),duration:R(.05,.2),ease:'none'});G.delayedCall(R(.08,.35),flick)};flick();
-      setInterval(()=>{const t=$i('title');if(!t||t.hidden||document.hidden)return;
+    if(F._breath){F._breath.play();if(!F._flk)F._flick()}else{F._breath=G.to('#title .logo',{scale:1.025,duration:2.8,ease:'sine.inOut',yoyo:true,repeat:-1});
+      F._flick=()=>{const t=$i('title');if(!t||t.hidden){F._breath.pause();F._flk=0;return}F._flk=1;G.to('#title .logo',{opacity:R(.82,1),duration:R(.05,.2),ease:'none'});G.delayedCall(R(.08,.35),F._flick)};F._flick();
+      setInterval(()=>{const t=$i('title');if(!t||t.hidden||document.hidden||Math.random()>PERF.q())return;
         const e=bit('ember',t),x=R(0,innerWidth),y=innerHeight+10;G.set(e,{x,y,scale:R(.5,1.4)});
         G.to(e,{x:x+R(-60,60),y:y-R(innerHeight*.5,innerHeight*1.05),opacity:0,duration:R(4,8),ease:'none',onComplete:()=>e.remove()})},260)}
     return true};
@@ -1558,14 +1580,34 @@ let T=48,dpr=1,vw=0,vh=0,ox=0,oy=0,vignette=null;
 let path=[],lastStep=0,anim={fx:START.x,fy:START.y,t0:0};
 const SIGHT=5;
 function resize(){
-  const r=view.getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,2);
+  const r=view.getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,PERF.dprCap());
   vw=r.width;vh=r.height;cv.width=Math.round(vw*dpr);cv.height=Math.round(vh*dpr);
   T=clamp(Math.floor(vw/9),36,64);
   vignette=ctx.createRadialGradient(vw/2,vh/2,Math.min(vw,vh)*.25,vw/2,vh/2,Math.max(vw,vh)*.7);
   vignette.addColorStop(0,'rgba(5,3,8,0)');vignette.addColorStop(1,'rgba(5,3,8,.75)');
+  shadeLayer=null;needPaint=true;
 }
+/* the hero's light and the screen vignette never move (the camera follows the hero), so both are painted once into one layer */
+let shadeLayer=null,shadeKey='';
+function shade2(lx,ly){
+  const key=Math.round(lx)+','+Math.round(ly)+','+T;
+  if(shadeLayer&&key===shadeKey)return shadeLayer;
+  shadeKey=key;const c=shadeLayer||document.createElement('canvas');shadeLayer=c;
+  c.width=Math.max(1,Math.round(vw*dpr));c.height=Math.max(1,Math.round(vh*dpr));
+  const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,vw,vh);
+  const g=x.createRadialGradient(lx,ly,T*SIGHT*.45,lx,ly,T*SIGHT*1.25);g.addColorStop(0,'rgba(8,5,14,0)');g.addColorStop(1,'rgba(8,5,14,.62)');
+  x.fillStyle=g;x.fillRect(0,0,vw,vh);x.fillStyle=vignette;x.fillRect(0,0,vw,vh);
+  return c;
+}
+let needPaint=true;
+window.addEventListener('gfx',()=>{if(typeof S!=='undefined'&&S)resize()});
 function hash(x,y){let h=(x*374761393+y*668265263)|0;h=(h^(h>>>13))*1274126177|0;return(h^(h>>>16))>>>0}
 let baseLayer=null,fogLayer=null,fogDirty=true;
+/* the ground and fog layers are 1 px per tile; they are enlarged once with smooth resampling (BK px per tile),
+   so each frame only needs a cheap plain stretch instead of an expensive high-quality one */
+const BK=8;let baseBig=null,fogBig=null;
+function enlarge(src,dst){if(!dst){dst=document.createElement('canvas');dst.width=W*BK;dst.height=H*BK}
+  const x=dst.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.clearRect(0,0,dst.width,dst.height);x.drawImage(src,0,0,W*BK,H*BK);return dst}
 function reveal(){for(let j=-SIGHT;j<=SIGHT;j++)for(let i=-SIGHT;i<=SIGHT;i++){const x=S.x+i,y=S.y+j;if(x<0||y<0||x>=W||y>=H)continue;if(i*i+j*j<=SIGHT*SIGHT+1&&!S.explored[y*W+x]){S.explored[y*W+x]=1;fogDirty=true}}}
 /* ground colour per tile; the layer is W×H pixels and gets stretched with smoothing, so tiles blend into soft terrain */
 function tileRGB(t,b,h,dg){
@@ -1582,25 +1624,28 @@ function buildBase(){
   baseLayer=document.createElement('canvas');baseLayer.width=W;baseLayer.height=H;
   const x=baseLayer.getContext('2d'),img=x.createImageData(W,H);
   for(let y=0;y<H;y++)for(let i=0;i<W;i++){const k=y*W+i,c=tileRGB(tiles[k],biomeMap[k],hash(i,y),dangerMap[k]);img.data[k*4]=c[0];img.data[k*4+1]=c[1];img.data[k*4+2]=c[2];img.data[k*4+3]=255}
-  x.putImageData(img,0,0);fogDirty=true;
+  x.putImageData(img,0,0);fogDirty=true;baseBig=enlarge(baseLayer,baseBig);
 }
 function buildFog(){
   if(!fogLayer){fogLayer=document.createElement('canvas');fogLayer.width=W;fogLayer.height=H}
   const x=fogLayer.getContext('2d'),img=x.createImageData(W,H);
   for(let k=0;k<W*H;k++){img.data[k*4]=6;img.data[k*4+1]=4;img.data[k*4+2]=10;img.data[k*4+3]=S.explored[k]?0:255}
-  x.putImageData(img,0,0);fogDirty=false;
+  x.putImageData(img,0,0);fogDirty=false;fogBig=enlarge(fogLayer,fogBig);
 }
 function levelColor(L){const d=L-S.lvl;return d<=-2?'#7f8a72':d<=0?'#d6cfbe':d<=2?'#e6b445':'#ff4a5e'}
 const isRoad=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&tiles[y*W+x]===T_ROAD;
 function render(ts){
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality=PERF.lvl?'medium':'high';
   ctx.fillStyle='#050308';ctx.fillRect(0,0,vw,vh);
   if(!baseLayer)buildBase();
   const ax=S.px-.5,ay=S.py-.5;
   ox=Math.round(vw/2-(ax+.5)*T);oy=Math.round(vh/2-(ay+.5)*T);
   const x0=Math.max(0,Math.floor(-ox/T)-1),x1=Math.min(W-1,Math.ceil((vw-ox)/T)+1),y0=Math.max(0,Math.floor(-oy/T)-1),y1=Math.min(H-1,Math.ceil((vh-oy)/T)+1);
-  /* soft terrain */
-  ctx.drawImage(baseLayer,0,0,W,H,ox,oy,W*T,H*T);
+  /* soft terrain: only the visible part of the map (plus a tile of margin so the smoothing still blends at the edges) */
+  const sw=x1-x0+1,sh=y1-y0+1;
+  ctx.imageSmoothingQuality='low';
+  if(sw>0&&sh>0)ctx.drawImage(baseBig,x0*BK,y0*BK,sw*BK,sh*BK,ox+x0*T,oy+y0*T,sw*T,sh*T);
+  ctx.imageSmoothingQuality=PERF.lvl?'medium':'high';
   /* water shimmer, grass tufts */
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
     const kk=y*W+x;if(!S.explored[kk])continue;
@@ -1672,10 +1717,9 @@ function render(ts){
    ctx.drawImage(getSprite('hero',heroPal()),-hs/2,-hs+bob,hs,hs);ctx.restore()}
   /* fog of war, light around the hero, vignette */
   if(fogDirty)buildFog();
-  ctx.drawImage(fogLayer,0,0,W,H,ox,oy,W*T,H*T);
-  const lx=hx+T/2,ly=hy+T/2,lgr=ctx.createRadialGradient(lx,ly,T*SIGHT*.45,lx,ly,T*SIGHT*1.25);
-  lgr.addColorStop(0,'rgba(8,5,14,0)');lgr.addColorStop(1,'rgba(8,5,14,.62)');ctx.fillStyle=lgr;ctx.fillRect(0,0,vw,vh);
-  ctx.fillStyle=vignette;ctx.fillRect(0,0,vw,vh);
+  ctx.imageSmoothingQuality='low';
+  if(sw>0&&sh>0)ctx.drawImage(fogBig,x0*BK,y0*BK,sw*BK,sh*BK,ox+x0*T,oy+y0*T,sw*T,sh*T);
+  ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(shade2(vw/2,vh/2),0,0);
 }
 function bfs(tx,ty){
   if(!passable(tx,ty)||!S.explored[ty*W+tx])return null;
@@ -1693,7 +1737,10 @@ function bfs(tx,ty){
   const out=[];let c=goal;while(c!==start){out.unshift({x:c%W,y:(c/W)|0});c=prev[c]}
   return out;
 }
-const busy=()=>!$('#combat').hidden||!$('#ov').hidden||!$('#title').hidden;
+const elCombat=$('#combat'),elOv=$('#ov'),elTitle=$('#title');
+const busy=()=>!elCombat.hidden||!elOv.hidden||!elTitle.hidden;
+/* the fight and the title screen cover the whole map, so it isn't drawn under them */
+const mapCovered=()=>!elCombat.hidden||!elTitle.hidden;
 /* ---------- free movement: floating joystick (press and drag anywhere on the map), WASD / arrows on desktop ---------- */
 const HERO_SPEED=3.4,JOY_R=46;
 let joy=null;const keys={};
@@ -1794,12 +1841,18 @@ function stepTick(){
   updateHud();
 }
 let lastTs=0;
+let frameN=0,actVis=null,cvVis=null;
 function loop(ts){
-  const dt=Math.min(.05,(ts-(lastTs||ts))/1000);lastTs=ts;
-  if(!busy()){updateWorld(dt,ts);updateNear()}else if(joy)stopJoy();
-  actBtn.style.visibility=busy()?'hidden':'visible';
+  const raw=(ts-(lastTs||ts))/1000,dt=Math.min(.05,raw);lastTs=ts;frameN++;
+  PERF.frame(raw);
+  const b=busy(),cov=mapCovered();
+  if(!b){updateWorld(dt,ts);updateNear()}else if(joy)stopJoy();
+  const bb=b||busy();if(bb!==actVis){actVis=bb;actBtn.style.visibility=bb?'hidden':'visible'}
   Snd.setTrack(moodNow());
-  render(ts);requestAnimationFrame(loop);
+  if(cov!==cvVis){cvVis=cov;cv.style.visibility=cov?'hidden':'visible';if(!cov)needPaint=true}
+  /* under a menu sheet the world is paused: a few frames a second keep the water alive */
+  if(!cov&&(needPaint||!bb||frameN%4===0)){needPaint=false;render(ts)}
+  requestAnimationFrame(loop);
 }
 
 /* ---------- HUD ---------- */
@@ -2182,6 +2235,7 @@ function settingsHTML(){
     <label class="vol" style="flex-basis:100%">Громкость<input type="range" id="vol-music" min="0" max="100" step="5" value="${Snd.prefs.mvol}" data-vol="music" aria-label="Громкость музыки"><output>${Snd.prefs.mvol}%</output></label></div>
    <div class="row" style="flex-wrap:wrap"><div class="t"><b>Звуки</b><small>Удары, лечение, монеты</small></div><button class="btn${Snd.prefs.sfx?'':' ghost'}" data-act="tglSfx">${Snd.prefs.sfx?'Вкл':'Выкл'}</button>
     <label class="vol" style="flex-basis:100%">Громкость<input type="range" id="vol-sfx" min="0" max="100" step="5" value="${Snd.prefs.svol}" data-vol="sfx" aria-label="Громкость звуков"><output>${Snd.prefs.svol}%</output></label></div>
+   <div class="row"><div class="t"><b>Графика</b><small>${GFX_HINT[PERF.mode]}${PERF.mode==='auto'?' Сейчас: '+GFX_LVL[PERF.lvl]+'.':''}</small></div><button class="btn" data-act="tglGfx">${GFX_N[PERF.mode]}</button></div>
   </div>
   <h3>Как играть</h3>
   <p class="lore" style="font-size:13px;line-height:1.5">Зажмите палец на карте и ведите в сторону — это джойстик (на компьютере — стрелки или WASD). Враги бродят возле своих мест: подойдёте вплотную — начнётся бой. Рядом с поселением или человеком появляется кнопка «Войти» или «Говорить». В бою удар оружием бесплатен, приёмы и умения тратят фокус; каждые три хода — комбо-ход.</p>
@@ -2199,6 +2253,9 @@ function menuBody(){
 }
 ACT.menuSettings=()=>{menuView='settings'};ACT.menuBack=()=>{menuView='main'};
 ACT.toTitle=()=>{save();closeSheet();showTitle();return'nore'};
+const GFX_N={auto:'Авто',hi:'Высокая',lo:'Экономная'},GFX_LVL=['полная','облегчённая','экономная'],
+  GFX_HINT={auto:'Игра сама упростит эффекты, если телефон не успевает.',hi:'Все эффекты в полном качестве.',lo:'Меньше частиц и свечения, карта чуть мягче. Для слабых телефонов.'};
+ACT.tglGfx=()=>{PERF.setMode({auto:'hi',hi:'lo',lo:'auto'}[PERF.mode])};
 ACT.tglMusic=()=>{Snd.toggle('music');updMusicBtn()};ACT.tglSfx=()=>Snd.toggle('sfx');
 function updMusicBtn(){const b=$('#nMusic'),on=Snd.prefs.music;b.classList.toggle('off',!on);b.setAttribute('aria-label',on?'Выключить музыку':'Включить музыку')}
 $('#nMusic').onclick=()=>{const on=Snd.toggle('music');updMusicBtn();toast(on?'Музыка включена. Громкость — в «Меню → Настройки»':'Музыка выключена')};
@@ -2779,7 +2836,7 @@ const Snd=(()=>{
   return{setTrack,sfx,toggle,setVol,prefs,info:()=>({state:ctx?ctx.state:'none',track:cur,files:Object.fromEntries(Object.entries(files).map(([n,a])=>[n,{vol:+a.volume.toFixed(2),paused:a.paused,failed:!!failed[n]}]))})};
 })();
 function moodNow(){
-  if(!$('#combat').hidden)return C&&C.boss?'boss':'battle';
+  if(!elCombat.hidden)return C&&C.boss?'boss':'battle';
   const l=locAt[S.y*W+S.x];return l&&l.type==='town'?'town':'explore';
 }
 
